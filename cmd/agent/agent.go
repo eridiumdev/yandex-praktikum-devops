@@ -40,49 +40,40 @@ func (a *Agent) AddExporter(exp exporters.Exporter) {
 
 func (a *Agent) StartCollecting() {
 	collectCycles := 0
-	for {
-		select {
-		case <-time.Tick(a.collectInterval):
-			collectCycles++
-			logger.Debugf("[agent] collecting cycle %d", collectCycles)
-			for _, col := range a.collectors {
-				go a.collectMetrics(col)
-			}
+	for range time.Tick(a.collectInterval) {
+		collectCycles++
+		logger.Debugf("[agent] collecting cycle %d", collectCycles)
+		for _, col := range a.collectors {
+			go a.collectMetrics(col)
 		}
 	}
 }
 
 func (a *Agent) StartExporting() {
 	exportCycles := 0
-	for {
-		select {
-		case <-time.Tick(a.exportInterval):
-			exportCycles++
-			logger.Debugf("[agent] exporting cycle %d", exportCycles)
-			for _, exp := range a.exporters {
-				go a.exportMetrics(exp, a.metricsBuffer)
-			}
+	for range time.Tick(a.exportInterval) {
+		exportCycles++
+		logger.Debugf("[agent] exporting cycle %d", exportCycles)
+		for _, exp := range a.exporters {
+			go a.exportMetrics(exp, a.metricsBuffer)
 		}
 	}
 }
 
 func (a *Agent) StartBuffering() {
-	for {
-		select {
-		case metric := <-a.metricsChannel:
-			found := false
-			for i, m := range a.metricsBuffer {
-				if m.GetName() == metric.GetName() {
-					// Overwrite previous metric in buffer, if set
-					a.metricsBuffer[i] = metric
-					found = true
-					break
-				}
+	for metric := range a.metricsChannel {
+		found := false
+		for i, m := range a.metricsBuffer {
+			if m.GetName() == metric.GetName() {
+				// Overwrite previous metric in buffer, if set
+				a.metricsBuffer[i] = metric
+				found = true
+				break
 			}
-			if !found {
-				// Add metric to buffer for the first time
-				a.metricsBuffer = append(a.metricsBuffer, metric)
-			}
+		}
+		if !found {
+			// Add metric to buffer for the first time
+			a.metricsBuffer = append(a.metricsBuffer, metric)
 		}
 	}
 }

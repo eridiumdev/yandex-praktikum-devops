@@ -10,15 +10,15 @@ import (
 	"time"
 )
 
-type HttpExporter struct {
+type HTTPExporter struct {
 	*AbstractExporter
 	host   string
 	port   int
 	client *http.Client
 }
 
-func NewHttpExporter(name string, host string, port int, timeout time.Duration) *HttpExporter {
-	exp := &HttpExporter{
+func NewHTTPExporter(name string, host string, port int, timeout time.Duration) *HTTPExporter {
+	exp := &HTTPExporter{
 		AbstractExporter: &AbstractExporter{
 			name:  name,
 			ready: make(chan bool),
@@ -33,7 +33,7 @@ func NewHttpExporter(name string, host string, port int, timeout time.Duration) 
 	return exp
 }
 
-func (exp *HttpExporter) Export(mtx []metrics.Metric) error {
+func (exp *HTTPExporter) Export(mtx []metrics.Metric) error {
 	defer func() {
 		exp.makeReady()
 	}()
@@ -45,17 +45,16 @@ func (exp *HttpExporter) Export(mtx []metrics.Metric) error {
 		if err != nil {
 			return err
 		}
-		resp, err := exp.client.Do(req)
+		err = exp.doRequest(req, metric)
 		if err != nil {
 			return err
 		}
-		logger.Infof("export %s: %s", metric.GetName(), resp.Status)
 	}
 
 	return nil
 }
 
-func (exp *HttpExporter) prepareRequest(ctx context.Context, metric metrics.Metric) (*http.Request, error) {
+func (exp *HTTPExporter) prepareRequest(ctx context.Context, metric metrics.Metric) (*http.Request, error) {
 	// http://<АДРЕС_СЕРВЕРА>/update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
 	url := fmt.Sprintf("http://%s:%d/update/%s/%s/%s",
 		exp.host,
@@ -71,4 +70,18 @@ func (exp *HttpExporter) prepareRequest(ctx context.Context, metric metrics.Metr
 	request.Header.Add("Content-Type", "text/plain")
 
 	return request, nil
+}
+
+func (exp *HTTPExporter) doRequest(request *http.Request, metric metrics.Metric) error {
+	resp, err := exp.client.Do(request)
+	defer func() {
+		if resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+	}()
+	if err != nil {
+		return err
+	}
+	logger.Infof("export %s: %s", metric.GetName(), resp.Status)
+	return nil
 }

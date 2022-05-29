@@ -9,14 +9,14 @@ import (
 
 const (
 	LogExporter  = 0x01
-	HttpExporter = 0x02
+	HTTPExporter = 0x02
 )
 
 const (
 	LogLevel = logger.LevelInfo
 
 	//ExportersEnabled = LogExporter
-	ExportersEnabled = HttpExporter
+	ExportersEnabled = HTTPExporter
 
 	CollectInterval = 2 * time.Second
 	ExportInterval  = 10 * time.Second
@@ -24,9 +24,9 @@ const (
 	RandomValueMin = 0
 	RandomValueMax = 9999
 
-	HttpHost    = "127.0.0.1"
-	HttpPort    = 8080
-	HttpTimeout = 3 * time.Second
+	HTTPHost    = "127.0.0.1"
+	HTTPPort    = 8080
+	HTTPTimeout = 3 * time.Second
 )
 
 func main() {
@@ -54,9 +54,9 @@ func main() {
 		logExporter := exporters.NewLogExporter("log")
 		agent.AddExporter(logExporter)
 	}
-	if exporterEnabled(HttpExporter) {
-		// HttpExporter is the main exporter for Yandex-Practicum tasks
-		httpExporter := exporters.NewHttpExporter("http", HttpHost, HttpPort, HttpTimeout)
+	if exporterEnabled(HTTPExporter) {
+		// HTTPExporter is the main exporter for Yandex-Practicum tasks
+		httpExporter := exporters.NewHTTPExporter("http", HTTPHost, HTTPPort, HTTPTimeout)
 		agent.AddExporter(httpExporter)
 	}
 
