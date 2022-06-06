@@ -3,6 +3,7 @@ package main
 import (
 	_http "eridiumdev/yandex-praktikum-go-devops/cmd/server/http"
 	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/handlers"
+	"eridiumdev/yandex-praktikum-go-devops/cmd/server/storage"
 	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
 	"net/http"
 )
@@ -22,8 +23,11 @@ func main() {
 	// Init HTTP server
 	server := _http.NewServer(HTTPHost, HTTPPort)
 
+	// Init storage
+	inMemStorage := storage.NewInMemStorage()
+
 	// Init handlers
-	metricsHandler := handlers.NewMetricsHandler()
+	metricsHandler := handlers.NewMetricsHandler(inMemStorage)
 
 	// Connect handlers to server
 	server.AddHandler("/update/", http.MethodPost, metricsHandler.Update)
