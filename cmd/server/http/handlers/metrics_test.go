@@ -67,6 +67,15 @@ func TestUpdate(t *testing.T) {
 				contentType: "text/plain; charset=utf-8",
 			},
 		},
+		{
+			name: "negative test: bad metric type",
+			url: "/update/unknown/testCounter/100",
+			want: Want{
+				code:        http.StatusNotImplemented,
+				response:    "[metrics handler] bad metric type 'unknown', use one of: gauge, counter",
+				contentType: "text/plain; charset=utf-8",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

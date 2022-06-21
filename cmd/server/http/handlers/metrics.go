@@ -17,7 +17,7 @@ type MetricsHandler struct {
 func NewMetricsHandler(store storage.Storage) *MetricsHandler {
 	return &MetricsHandler{
 		AbstractHandler: &AbstractHandler{},
-		Store: store,
+		Store:           store,
 	}
 }
 
@@ -60,6 +60,10 @@ func (h *MetricsHandler) Update(w http.ResponseWriter, r *http.Request) {
 			},
 			Value: metrics.Gauge(val),
 		}
+	default:
+		possibleValues := strings.Join([]string{metrics.TypeGauge, metrics.TypeCounter}, ", ")
+		h.Error(w, http.StatusNotImplemented, fmt.Sprintf("[metrics handler] bad metric type '%s', use one of: %s", metricType, possibleValues))
+		return
 	}
 
 	err := h.Store.StoreMetric(metric)
