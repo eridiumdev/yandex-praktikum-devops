@@ -1,6 +1,7 @@
 package collectors
 
 import (
+	"context"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 	"runtime"
 )
@@ -22,7 +23,7 @@ func NewRuntimeCollector(name string) *RuntimeCollector {
 	return col
 }
 
-func (col *RuntimeCollector) Collect() ([]metrics.Metric, error) {
+func (col *RuntimeCollector) Collect(ctx context.Context) ([]metrics.Metric, error) {
 	defer func() {
 		col.makeReady()
 	}()

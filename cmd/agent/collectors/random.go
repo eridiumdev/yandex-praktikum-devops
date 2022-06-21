@@ -1,6 +1,7 @@
 package collectors
 
 import (
+	"context"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 	"errors"
 	"math/rand"
@@ -40,7 +41,7 @@ func NewRandomCollector(name string, randomValueMin, randomValueMax int) (*Rando
 	return col, nil
 }
 
-func (col *RandomCollector) Collect() ([]metrics.Metric, error) {
+func (col *RandomCollector) Collect(ctx context.Context) ([]metrics.Metric, error) {
 	defer func() {
 		col.ready <- true
 	}()

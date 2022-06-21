@@ -1,10 +1,13 @@
 package collectors
 
-import "eridiumdev/yandex-praktikum-go-devops/internal/metrics"
+import (
+	"context"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
+)
 
 type Collector interface {
 	GetName() string
-	Collect() ([]metrics.Metric, error)
+	Collect(context.Context) ([]metrics.Metric, error)
 	Ready() <-chan bool
 }
 

@@ -1,10 +1,13 @@
 package exporters
 
-import "eridiumdev/yandex-praktikum-go-devops/internal/metrics"
+import (
+	"context"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
+)
 
 type Exporter interface {
 	GetName() string
-	Export([]metrics.Metric) error
+	Export(context.Context, []metrics.Metric) error
 	Ready() <-chan bool
 }
 

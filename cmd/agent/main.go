@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"eridiumdev/yandex-praktikum-go-devops/cmd/agent/collectors"
 	"eridiumdev/yandex-praktikum-go-devops/cmd/agent/exporters"
 	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
+	"os"
+	"os/signal"
 	"time"
 )
 
@@ -20,6 +23,7 @@ const (
 
 	CollectInterval = 2 * time.Second
 	ExportInterval  = 10 * time.Second
+	ShutdownTimeout = 3 * time.Second
 
 	RandomValueMin = 0
 	RandomValueMax = 9999
@@ -30,6 +34,9 @@ const (
 )
 
 func main() {
+	// Init context
+	ctx, cancel := context.WithCancel(context.Background())
+
 	// Init custom logger
 	logger.Init(LogLevel)
 	logger.Infof("Logger started")
@@ -41,7 +48,7 @@ func main() {
 	runtimeCollector := collectors.NewRuntimeCollector("runtime")
 	randomCollector, err := collectors.NewRandomCollector("random", RandomValueMin, RandomValueMax)
 	if err != nil {
-		logger.Fatalf("cannot start random collector: %s", err.Error())
+		logger.Fatalf("Cannot start random collector: %s", err.Error())
 	}
 
 	// Provide collectors to agent
@@ -61,16 +68,32 @@ func main() {
 	}
 
 	// Start agent
-	go agent.StartCollecting()
+	go agent.StartCollecting(ctx)
+	// Buffering will buffer metrics before exporting
+	go agent.StartBuffering(ctx)
 	// Wait one CollectInterval before running first export
 	time.AfterFunc(CollectInterval, func() {
-		agent.StartExporting()
+		agent.StartExporting(ctx)
+	})
+	logger.Infof("Agent started")
+
+	// Handle OS signals for graceful shutdown
+	quit := make(chan os.Signal)
+	signal.Notify(quit, os.Interrupt, os.Kill)
+	sig := <-quit
+	logger.Infof("OS signal received: %s", sig)
+
+	// Allow some time for collectors/exporters to finish their job
+	time.AfterFunc(ShutdownTimeout, func() {
+		logger.Fatalf("Agent force-stopped (shutdown timeout)")
 	})
 
-	logger.Infof("Agent started")
-	agent.StartBuffering()
+	// Call cancel function and stop the agent
+	cancel()
+	agent.Stop()
+	logger.Infof("Agent stopped")
 }
 
 func exporterEnabled(exporter int) bool {
-	return ExportersEnabled & exporter == exporter
+	return ExportersEnabled&exporter == exporter
 }

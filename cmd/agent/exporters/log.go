@@ -1,6 +1,7 @@
 package exporters
 
 import (
+	"context"
 	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 )
@@ -20,7 +21,7 @@ func NewLogExporter(name string) *LogExporter {
 	return exp
 }
 
-func (exp *LogExporter) Export(mtx []metrics.Metric) error {
+func (exp *LogExporter) Export(ctx context.Context, mtx []metrics.Metric) error {
 	defer func() {
 		exp.makeReady()
 	}()

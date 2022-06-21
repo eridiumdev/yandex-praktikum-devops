@@ -1,7 +1,9 @@
 package http
 
 import (
+	"context"
 	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
+	"errors"
 	"fmt"
 	"net/http"
 )
@@ -25,7 +27,18 @@ func (s *Server) AddHandler(endpoint, method string, handler http.HandlerFunc) {
 }
 
 func (s *Server) Start() {
-	logger.Fatalf("Failed to start HTTP server: %s", s.Server.ListenAndServe().Error())
+	err := s.Server.ListenAndServe()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		// ErrServerClosed is normal-case scenario (i.e. graceful server stop)
+		logger.Fatalf("Failed to start HTTP server: %s", err.Error())
+	}
+}
+
+func (s *Server) Stop(ctx context.Context) {
+	err := s.Server.Shutdown(ctx)
+	if err != nil {
+		logger.Errorf("Error when stopping HTTP server: %s", err.Error())
+	}
 }
 
 func (s *Server) addMiddlewares(handler http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {

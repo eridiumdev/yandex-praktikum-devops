@@ -33,12 +33,10 @@ func NewHTTPExporter(name string, host string, port int, timeout time.Duration) 
 	return exp
 }
 
-func (exp *HTTPExporter) Export(mtx []metrics.Metric) error {
+func (exp *HTTPExporter) Export(ctx context.Context, mtx []metrics.Metric) error {
 	defer func() {
 		exp.makeReady()
 	}()
-
-	ctx := context.Background()
 
 	for _, metric := range mtx {
 		req, err := exp.prepareRequest(ctx, metric)
@@ -75,7 +73,7 @@ func (exp *HTTPExporter) prepareRequest(ctx context.Context, metric metrics.Metr
 func (exp *HTTPExporter) doRequest(request *http.Request, metric metrics.Metric) error {
 	resp, err := exp.client.Do(request)
 	defer func() {
-		if resp.Body != nil {
+		if resp != nil && resp.Body != nil {
 			_ = resp.Body.Close()
 		}
 	}()
