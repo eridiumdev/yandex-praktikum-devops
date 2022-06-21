@@ -57,7 +57,11 @@ func TestPrepareRequest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			exp := NewHTTPExporter("http", "localhost", 80, 5)
 			req, err := exp.prepareRequest(context.Background(), tt.metric)
-			defer req.Body.Close()
+			defer func() {
+				if req != nil && req.Body != nil {
+					_ = req.Body.Close()
+				}
+			}()
 			body, _ := io.ReadAll(req.Body)
 
 			require.NoError(t, err)

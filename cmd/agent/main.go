@@ -7,6 +7,7 @@ import (
 	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -80,8 +81,8 @@ func main() {
 	logger.Infof("Agent started")
 
 	// Handle OS signals for graceful shutdown
-	quit := make(chan os.Signal)
-	signal.Notify(quit, os.Interrupt, os.Kill)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-quit
 	logger.Infof("OS signal received: %s", sig)
 
