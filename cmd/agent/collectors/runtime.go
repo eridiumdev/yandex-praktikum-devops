@@ -8,7 +8,6 @@ import (
 
 type RuntimeCollector struct {
 	*AbstractCollector
-	pollCount metrics.Counter
 }
 
 func NewRuntimeCollector(name string) *RuntimeCollector {
@@ -17,7 +16,6 @@ func NewRuntimeCollector(name string) *RuntimeCollector {
 			name:  name,
 			ready: make(chan bool),
 		},
-		pollCount: 0,
 	}
 	col.makeReady()
 	return col
@@ -27,21 +25,7 @@ func (col *RuntimeCollector) Collect(ctx context.Context) ([]metrics.Metric, err
 	defer func() {
 		col.makeReady()
 	}()
-	// Get runtime metrics
-	snapshot := col.getRuntimeSnapshot()
-
-	// Increment pollCount after each poll
-	col.pollCount++
-
-	// Add pollCount to snapshot
-	snapshot = append(snapshot, &metrics.CounterMetric{
-		AbstractMetric: metrics.AbstractMetric{
-			Name: metrics.PollCount,
-		},
-		Value: col.pollCount,
-	})
-
-	return snapshot, nil
+	return col.getRuntimeSnapshot(), nil
 }
 
 func (col *RuntimeCollector) getRuntimeSnapshot() []metrics.Metric {

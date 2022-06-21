@@ -18,16 +18,19 @@ type Agent struct {
 
 	metricsChannel chan metrics.Metric
 	metricsBuffer  []metrics.Metric
+
+	flushMetricsBuffer chan interface{}
 }
 
 func NewAgent(collectInterval time.Duration, exportInterval time.Duration) *Agent {
 	return &Agent{
-		collectInterval: collectInterval,
-		exportInterval:  exportInterval,
-		collectors:      []collectors.Collector{},
-		exporters:       []exporters.Exporter{},
-		metricsChannel:  make(chan metrics.Metric),
-		metricsBuffer:   []metrics.Metric{},
+		collectInterval:    collectInterval,
+		exportInterval:     exportInterval,
+		collectors:         []collectors.Collector{},
+		exporters:          []exporters.Exporter{},
+		metricsChannel:     make(chan metrics.Metric),
+		metricsBuffer:      []metrics.Metric{},
+		flushMetricsBuffer: make(chan interface{}),
 	}
 }
 
@@ -66,6 +69,9 @@ func (a *Agent) StartExporting(ctx context.Context) {
 			for _, exp := range a.exporters {
 				go a.exportMetrics(ctx, exp, a.metricsBuffer)
 			}
+			go func() {
+				a.flushMetricsBuffer <- true
+			}()
 		case <-ctx.Done():
 			logger.Debugf("[agent] context cancelled, exporting stopped")
 			return
@@ -80,9 +86,23 @@ func (a *Agent) StartBuffering(ctx context.Context) {
 			found := false
 			for i, m := range a.metricsBuffer {
 				if m.GetName() == metric.GetName() {
-					// Overwrite previous metric in buffer, if set
-					a.metricsBuffer[i] = metric
 					found = true
+					switch m.GetType() {
+					case metrics.TypeCounter:
+						// Add value on top of previous value
+						sum := m.GetValue().(metrics.Counter) + metric.GetValue().(metrics.Counter)
+						a.metricsBuffer[i] = metrics.CounterMetric{
+							AbstractMetric: metrics.AbstractMetric{
+								Name: m.GetName(),
+							},
+							Value: sum,
+						}
+					case metrics.TypeGauge:
+						fallthrough
+					default:
+						// Overwrite old value
+						a.metricsBuffer[i] = metric
+					}
 					break
 				}
 			}
@@ -90,6 +110,9 @@ func (a *Agent) StartBuffering(ctx context.Context) {
 				// Add metric to buffer for the first time
 				a.metricsBuffer = append(a.metricsBuffer, metric)
 			}
+		case <-a.flushMetricsBuffer:
+			logger.Debugf("[agent] metrics buffer flushed")
+			a.metricsBuffer = []metrics.Metric{}
 		case <-ctx.Done():
 			logger.Debugf("[agent] context cancelled, buffering stopped")
 			return

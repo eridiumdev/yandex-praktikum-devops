@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	LogLevel = logger.LevelDebug
+	LogLevel = logger.LevelInfo
 
 	HTTPHost = "127.0.0.1"
 	HTTPPort = 8080

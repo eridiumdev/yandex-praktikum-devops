@@ -46,6 +46,7 @@ func main() {
 
 	// Init collectors
 	runtimeCollector := collectors.NewRuntimeCollector("runtime")
+	pollCountCollector := collectors.NewPollCountCollector("poll-count")
 	randomCollector, err := collectors.NewRandomCollector("random", RandomValueMin, RandomValueMax)
 	if err != nil {
 		logger.Fatalf("Cannot start random collector: %s", err.Error())
@@ -53,6 +54,7 @@ func main() {
 
 	// Provide collectors to agent
 	agent.AddCollector(runtimeCollector)
+	agent.AddCollector(pollCountCollector)
 	agent.AddCollector(randomCollector)
 
 	// Init exporters
