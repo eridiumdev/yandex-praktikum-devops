@@ -44,7 +44,7 @@ func TestUpdate(t *testing.T) {
 			name: "negative test: bad url",
 			url: "/update/123",
 			want: Want{
-				code:        http.StatusBadRequest,
+				code:        http.StatusNotFound,
 				response:    "[metrics handler] bad request url, use /update/<metricType>/<metricName>/<metricValue>",
 				contentType: "text/plain; charset=utf-8",
 			},
