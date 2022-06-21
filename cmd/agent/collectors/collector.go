@@ -24,7 +24,7 @@ func (col *AbstractCollector) Ready() <-chan bool {
 	return col.ready
 }
 
-func (col *AbstractCollector) makeReady() {
+func (col *AbstractCollector) readyUp() {
 	go func() {
 		col.ready <- true
 	}()

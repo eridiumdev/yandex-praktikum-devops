@@ -17,13 +17,13 @@ func NewRuntimeCollector(name string) *RuntimeCollector {
 			ready: make(chan bool),
 		},
 	}
-	col.makeReady()
+	col.readyUp()
 	return col
 }
 
 func (col *RuntimeCollector) Collect(ctx context.Context) ([]metrics.Metric, error) {
 	defer func() {
-		col.makeReady()
+		col.readyUp()
 	}()
 	return col.getRuntimeSnapshot(), nil
 }

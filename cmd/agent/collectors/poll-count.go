@@ -17,13 +17,13 @@ func NewPollCountCollector(name string) *PollCountCollector {
 			ready: make(chan bool),
 		},
 	}
-	col.makeReady()
+	col.readyUp()
 	return col
 }
 
 func (col *PollCountCollector) Collect(ctx context.Context) ([]metrics.Metric, error) {
 	defer func() {
-		col.makeReady()
+		col.readyUp()
 	}()
 
 	return []metrics.Metric{

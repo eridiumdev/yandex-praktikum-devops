@@ -17,13 +17,13 @@ func NewLogExporter(name string) *LogExporter {
 			ready: make(chan bool),
 		},
 	}
-	exp.makeReady()
+	exp.readyUp()
 	return exp
 }
 
 func (exp *LogExporter) Export(ctx context.Context, mtx []metrics.Metric) error {
 	defer func() {
-		exp.makeReady()
+		exp.readyUp()
 	}()
 
 	for _, metric := range mtx {

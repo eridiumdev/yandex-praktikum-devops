@@ -37,13 +37,13 @@ func NewRandomCollector(name string, randomValueMin, randomValueMax int) (*Rando
 		randomValueMin: randomValueMin,
 		randomValueMax: randomValueMax,
 	}
-	col.makeReady()
+	col.readyUp()
 	return col, nil
 }
 
 func (col *RandomCollector) Collect(ctx context.Context) ([]metrics.Metric, error) {
 	defer func() {
-		col.ready <- true
+		col.readyUp()
 	}()
 
 	randomValue := col.generator.Intn((col.randomValueMax-col.randomValueMin)+1) + col.randomValueMin

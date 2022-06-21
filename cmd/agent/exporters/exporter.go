@@ -24,7 +24,7 @@ func (exp *AbstractExporter) Ready() <-chan bool {
 	return exp.ready
 }
 
-func (exp *AbstractExporter) makeReady() {
+func (exp *AbstractExporter) readyUp() {
 	go func() {
 		exp.ready <- true
 	}()

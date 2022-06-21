@@ -29,13 +29,13 @@ func NewHTTPExporter(name string, host string, port int, timeout time.Duration) 
 			Timeout: timeout,
 		},
 	}
-	exp.makeReady()
+	exp.readyUp()
 	return exp
 }
 
 func (exp *HTTPExporter) Export(ctx context.Context, mtx []metrics.Metric) error {
 	defer func() {
-		exp.makeReady()
+		exp.readyUp()
 	}()
 
 	for _, metric := range mtx {

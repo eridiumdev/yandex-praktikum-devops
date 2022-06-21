@@ -9,11 +9,10 @@ type AbstractHandler struct {
 }
 
 func (h *AbstractHandler) Success(w http.ResponseWriter, status int) {
-	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(status)
 }
 
 func (h *AbstractHandler) Error(w http.ResponseWriter, status int, msg string) {
-	w.Header().Set("Content-Type", "text/plain")
 	http.Error(w, msg, status)
 }

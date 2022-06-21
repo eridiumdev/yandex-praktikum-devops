@@ -39,7 +39,7 @@ func (h *MetricsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	case metrics.TypeCounter:
 		val, err := strconv.ParseInt(metricValue, 10, 64)
 		if err != nil {
-			h.Error(w, http.StatusBadRequest, fmt.Sprintf("[metrics handler] bad metric value: '%s': %s", metricValue, err.Error()))
+			h.Error(w, http.StatusBadRequest, fmt.Sprintf("[metrics handler] bad metric value '%s': %s", metricValue, err.Error()))
 			return
 		}
 		metric = metrics.CounterMetric{
