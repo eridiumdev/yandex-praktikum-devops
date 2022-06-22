@@ -1,11 +1,11 @@
 package exporters
 
 import (
-	"bytes"
 	"context"
 	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 	"fmt"
+	"github.com/go-resty/resty/v2"
 	"net/http"
 	"time"
 )
@@ -14,7 +14,7 @@ type HTTPExporter struct {
 	*AbstractExporter
 	host   string
 	port   int
-	client *http.Client
+	client *resty.Client
 }
 
 func NewHTTPExporter(name string, host string, port int, timeout time.Duration) *HTTPExporter {
@@ -25,9 +25,8 @@ func NewHTTPExporter(name string, host string, port int, timeout time.Duration) 
 		},
 		host: host,
 		port: port,
-		client: &http.Client{
-			Timeout: timeout,
-		},
+		client: resty.New().
+			SetTimeout(timeout),
 	}
 	exp.readyUp()
 	return exp
@@ -39,47 +38,27 @@ func (exp *HTTPExporter) Export(ctx context.Context, mtx []metrics.Metric) error
 	}()
 
 	for _, metric := range mtx {
-		req, err := exp.prepareRequest(ctx, metric)
-		if err != nil {
-			return err
-		}
-		err = exp.doRequest(req, metric)
+		req := exp.prepareRequest(metric)
+		resp, err := req.Send()
+		logger.Infof("export %s: %s", metric.GetName(), resp.Status())
 		if err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
-func (exp *HTTPExporter) prepareRequest(ctx context.Context, metric metrics.Metric) (*http.Request, error) {
+func (exp *HTTPExporter) prepareRequest(metric metrics.Metric) *resty.Request {
 	// http://<АДРЕС_СЕРВЕРА>/update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
-	url := fmt.Sprintf("http://%s:%d/update/%s/%s/%s",
-		exp.host,
-		exp.port,
-		metric.GetType(),
-		metric.GetName(),
-		metric.GetStringValue())
+	req := exp.client.R()
+	req.URL = fmt.Sprintf("http://%s:%d/update/%s/%s/%s",
+			exp.host,
+			exp.port,
+			metric.GetType(),
+			metric.GetName(),
+			metric.GetStringValue())
+	req.Method = http.MethodPost
+	req.SetHeader("Content-Type", "text/plain")
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(""))
-	if err != nil {
-		return nil, err
-	}
-	request.Header.Add("Content-Type", "text/plain")
-
-	return request, nil
-}
-
-func (exp *HTTPExporter) doRequest(request *http.Request, metric metrics.Metric) error {
-	resp, err := exp.client.Do(request)
-	defer func() {
-		if resp != nil && resp.Body != nil {
-			_ = resp.Body.Close()
-		}
-	}()
-	if err != nil {
-		return err
-	}
-	logger.Infof("export %s: %s", metric.GetName(), resp.Status)
-	return nil
+	return req
 }
