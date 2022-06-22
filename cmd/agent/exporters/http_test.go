@@ -46,7 +46,7 @@ func TestPrepareRequest(t *testing.T) {
 				Value: 10.123,
 			},
 			want: Want{
-				url:         "http://localhost:80/update/gauge/Alloc/10.123000",
+				url:         "http://localhost:80/update/gauge/Alloc/10.123",
 				method:      http.MethodPost,
 				body:        "",
 				contentType: "text/plain",

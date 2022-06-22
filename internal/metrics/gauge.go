@@ -1,6 +1,9 @@
 package metrics
 
-import "strconv"
+import (
+	"strconv"
+	"strings"
+)
 
 type Gauge float64
 
@@ -18,5 +21,10 @@ func (m GaugeMetric) GetValue() interface{} {
 }
 
 func (m GaugeMetric) GetStringValue() string {
-	return strconv.FormatFloat(float64(m.Value), 'f', 6, 64)
+	trimmed := strings.TrimRight(strconv.FormatFloat(float64(m.Value), 'f', 6, 64), "0")
+	if trimmed[len(trimmed) - 1] == '.' {
+		return trimmed + "0"
+	} else {
+		return trimmed
+	}
 }

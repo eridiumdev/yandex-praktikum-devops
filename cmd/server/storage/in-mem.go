@@ -2,6 +2,7 @@ package storage
 
 import (
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
+	"github.com/pkg/errors"
 	"sync"
 )
 
@@ -41,4 +42,23 @@ func (st *InMemStorage) StoreMetric(metric metrics.Metric) error {
 		st.Metrics[metric.GetName()] = metric
 	}
 	return nil
+}
+
+func (st *InMemStorage) GetMetric(metricType, metricName string) (metrics.Metric, error) {
+	metric, ok := st.Metrics[metricName]
+	if !ok {
+		return nil, errors.Wrapf(ErrMetricNotFound, "'%s'", metricName)
+	}
+	if metric.GetType() != metricType {
+		return nil, errors.Wrapf(ErrMetricIncorrectType, "'%s'", metricType)
+	}
+	return metric, nil
+}
+
+func (st *InMemStorage) ListMetrics() ([]metrics.Metric, error) {
+	result := make([]metrics.Metric, 0)
+	for _, m := range st.Metrics {
+		result = append(result, m)
+	}
+	return result, nil
 }

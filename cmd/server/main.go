@@ -4,6 +4,7 @@ import (
 	"context"
 	_http "eridiumdev/yandex-praktikum-go-devops/cmd/server/http"
 	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/handlers"
+	"eridiumdev/yandex-praktikum-go-devops/cmd/server/rendering"
 	"eridiumdev/yandex-praktikum-go-devops/cmd/server/storage"
 	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
 	"net/http"
@@ -36,10 +37,15 @@ func main() {
 	// Init storage
 	inMemStorage := storage.NewInMemStorage()
 
+	// Init rendering engines
+	htmlEngine := rendering.NewHTMLEngine("rendering/templates/html")
+
 	// Init handlers
-	metricsHandler := handlers.NewMetricsHandler(inMemStorage)
+	metricsHandler := handlers.NewMetricsHandler(inMemStorage, htmlEngine)
 
 	// Connect handlers to server
+	server.AddHandler("/", http.MethodGet, metricsHandler.List)
+	server.AddHandler("/value/", http.MethodGet, metricsHandler.Get)
 	server.AddHandler("/update/", http.MethodPost, metricsHandler.Update)
 
 	// Start server
