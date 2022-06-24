@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/routers"
 	"net/http"
 )
 
-type AbstractHandler struct{}
+type AbstractHandler struct{
+	Router routers.Router
+}
 
 func (h *AbstractHandler) Success(w http.ResponseWriter, status int, body string) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")

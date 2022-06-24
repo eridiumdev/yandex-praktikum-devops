@@ -4,10 +4,10 @@ import (
 	"context"
 	_http "eridiumdev/yandex-praktikum-go-devops/cmd/server/http"
 	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/handlers"
+	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/routers"
 	"eridiumdev/yandex-praktikum-go-devops/cmd/server/rendering"
 	"eridiumdev/yandex-praktikum-go-devops/cmd/server/storage"
 	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -31,22 +31,20 @@ func main() {
 	logger.Init(LogLevel)
 	logger.Infof("Logger started")
 
-	// Init HTTP server
-	server := _http.NewServer(HTTPHost, HTTPPort)
-
 	// Init storage
 	inMemStorage := storage.NewInMemStorage()
 
 	// Init rendering engines
 	htmlEngine := rendering.NewHTMLEngine("rendering/templates/html")
 
-	// Init handlers
-	metricsHandler := handlers.NewMetricsHandler(inMemStorage, htmlEngine)
+	// Init router
+	router := routers.NewChiRouter()
 
-	// Connect handlers to server
-	server.AddHandler("/", http.MethodGet, metricsHandler.List)
-	server.AddHandler("/value/", http.MethodGet, metricsHandler.Get)
-	server.AddHandler("/update/", http.MethodPost, metricsHandler.Update)
+	// Init handlers
+	_ = handlers.NewMetricsHandler(router, inMemStorage, htmlEngine)
+
+	// Init HTTP server
+	server := _http.NewServer(router, HTTPHost, HTTPPort)
 
 	// Start server
 	logger.Infof("Starting HTTP server on %s:%d", HTTPHost, HTTPPort)
@@ -63,7 +61,7 @@ func main() {
 		logger.Fatalf("Server force-stopped (shutdown timeout)")
 	})
 
-	// Call cancel function and stop the server
+	// Stop the server
 	server.Stop(ctx)
 	logger.Infof("Server stopped")
 }

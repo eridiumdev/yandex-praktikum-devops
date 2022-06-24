@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/routers"
 	"eridiumdev/yandex-praktikum-go-devops/cmd/server/rendering"
 	"eridiumdev/yandex-praktikum-go-devops/cmd/server/storage"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
@@ -18,25 +19,25 @@ type MetricsHandler struct {
 	Engine rendering.Engine
 }
 
-func NewMetricsHandler(store storage.Storage, engine rendering.Engine) *MetricsHandler {
-	return &MetricsHandler{
-		AbstractHandler: &AbstractHandler{},
-		Store:           store,
-		Engine:          engine,
+func NewMetricsHandler(router routers.Router, store storage.Storage, engine rendering.Engine) *MetricsHandler {
+	h := &MetricsHandler{
+		AbstractHandler: &AbstractHandler{
+			Router: router,
+		},
+		Store:  store,
+		Engine: engine,
 	}
+	router.AddRoute(http.MethodGet, "/", h.List)
+	router.AddRoute(http.MethodGet, "/value/{metricType}/{metricName}", h.Get)
+	router.AddRoute(http.MethodPost, "/update/{metricType}/{metricName}/{metricValue}", h.Update)
+
+	return h
 }
 
 func (h *MetricsHandler) Update(w http.ResponseWriter, r *http.Request) {
-	// URL: /update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 5 { // 5 = "" + "update" + "metricType" + "metricName" + "metricValue"
-		h.Error(w, http.StatusNotFound, "[metrics handler] bad request url, use /update/<metricType>/<metricName>/<metricValue>")
-		return
-	}
-
-	metricType := parts[2]
-	metricName := parts[3]
-	metricValue := parts[4]
+	metricType := h.Router.URLParam(r, "metricType")
+	metricName := h.Router.URLParam(r, "metricName")
+	metricValue := h.Router.URLParam(r, "metricValue")
 
 	var metric metrics.Metric
 
@@ -81,15 +82,8 @@ func (h *MetricsHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MetricsHandler) Get(w http.ResponseWriter, r *http.Request) {
-	// URL: /value/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 4 { // 4 = "" + "value" + "metricType" + "metricName"
-		h.Error(w, http.StatusNotFound, "[metrics handler] bad request url, use /value/<metricType>/<metricName>")
-		return
-	}
-
-	metricType := parts[2]
-	metricName := parts[3]
+	metricType := h.Router.URLParam(r, "metricType")
+	metricName := h.Router.URLParam(r, "metricName")
 
 	metric, err := h.Store.GetMetric(metricType, metricName)
 	if err != nil {
@@ -110,7 +104,6 @@ func (h *MetricsHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MetricsHandler) List(w http.ResponseWriter, r *http.Request) {
-	// URL: /
 	mtx, err := h.Store.ListMetrics()
 	if err != nil {
 		h.Error(w, http.StatusInternalServerError, fmt.Sprintf("[metrics handler] error when getting metrics from storage: %s", err.Error()))
