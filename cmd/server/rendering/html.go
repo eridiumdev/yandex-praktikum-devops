@@ -2,8 +2,9 @@ package rendering
 
 import (
 	"bytes"
-	"github.com/pkg/errors"
 	"html/template"
+
+	"github.com/pkg/errors"
 )
 
 type HTMLEngine struct {

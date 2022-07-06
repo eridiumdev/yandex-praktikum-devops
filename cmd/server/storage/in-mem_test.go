@@ -1,11 +1,13 @@
 package storage
 
 import (
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 )
 
 func TestStoreMetric(t *testing.T) {

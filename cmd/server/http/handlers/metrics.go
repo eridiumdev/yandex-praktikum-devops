@@ -1,16 +1,18 @@
 package handlers
 
 import (
-	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/routers"
-	"eridiumdev/yandex-praktikum-go-devops/cmd/server/rendering"
-	"eridiumdev/yandex-praktikum-go-devops/cmd/server/storage"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 	"fmt"
-	"github.com/pkg/errors"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
+
+	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/routers"
+	"eridiumdev/yandex-praktikum-go-devops/cmd/server/rendering"
+	"eridiumdev/yandex-praktikum-go-devops/cmd/server/storage"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 )
 
 type MetricsHandler struct {

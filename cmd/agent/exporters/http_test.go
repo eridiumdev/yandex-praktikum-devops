@@ -1,10 +1,12 @@
 package exporters
 
 import (
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 )
 
 func TestPrepareRequest(t *testing.T) {

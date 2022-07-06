@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"eridiumdev/yandex-praktikum-go-devops/cmd/agent/collectors"
-	"eridiumdev/yandex-praktikum-go-devops/cmd/agent/exporters"
-	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"eridiumdev/yandex-praktikum-go-devops/cmd/agent/collectors"
+	"eridiumdev/yandex-praktikum-go-devops/cmd/agent/exporters"
+	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
 )
 
 const (

@@ -2,10 +2,12 @@ package collectors
 
 import (
 	"context"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 )
 
 func TestRuntimeCollect(t *testing.T) {

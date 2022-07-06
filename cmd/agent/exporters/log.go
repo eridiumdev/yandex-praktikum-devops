@@ -2,6 +2,7 @@ package exporters
 
 import (
 	"context"
+
 	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 )

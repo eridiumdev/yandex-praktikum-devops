@@ -1,9 +1,11 @@
 package storage
 
 import (
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
-	"github.com/pkg/errors"
 	"sync"
+
+	"github.com/pkg/errors"
+
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 )
 
 type InMemStorage struct {

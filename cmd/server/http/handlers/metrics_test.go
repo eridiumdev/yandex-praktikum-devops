@@ -1,19 +1,21 @@
 package handlers
 
 import (
-	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/routers"
-	"eridiumdev/yandex-praktikum-go-devops/cmd/server/rendering"
-	"eridiumdev/yandex-praktikum-go-devops/cmd/server/storage"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/routers"
+	"eridiumdev/yandex-praktikum-go-devops/cmd/server/rendering"
+	"eridiumdev/yandex-praktikum-go-devops/cmd/server/storage"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 )
 
 type DummyRenderingEngine struct{}

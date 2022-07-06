@@ -2,11 +2,12 @@ package http
 
 import (
 	"context"
-	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/routers"
-	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
 	"errors"
 	"fmt"
 	"net/http"
+
+	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/routers"
+	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
 )
 
 type Server struct {

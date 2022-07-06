@@ -2,10 +2,11 @@ package collectors
 
 import (
 	"context"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 	"errors"
 	"math/rand"
 	"time"
+
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 )
 
 type RandomCollector struct {

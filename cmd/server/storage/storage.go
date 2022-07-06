@@ -1,8 +1,9 @@
 package storage
 
 import (
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 	"errors"
+
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 )
 
 type Storage interface {

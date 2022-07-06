@@ -1,8 +1,9 @@
 package handlers
 
 import (
-	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/routers"
 	"net/http"
+
+	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/routers"
 )
 
 type AbstractHandler struct{

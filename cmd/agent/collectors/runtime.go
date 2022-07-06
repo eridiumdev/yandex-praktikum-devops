@@ -2,8 +2,9 @@ package collectors
 
 import (
 	"context"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 	"runtime"
+
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 )
 
 type RuntimeCollector struct {

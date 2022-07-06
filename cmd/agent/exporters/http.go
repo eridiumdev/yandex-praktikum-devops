@@ -2,12 +2,14 @@ package exporters
 
 import (
 	"context"
-	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 	"fmt"
-	"github.com/go-resty/resty/v2"
 	"net/http"
 	"time"
+
+	"github.com/go-resty/resty/v2"
+
+	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
 )
 
 type HTTPExporter struct {
@@ -52,11 +54,11 @@ func (exp *HTTPExporter) prepareRequest(metric metrics.Metric) *resty.Request {
 	// http://<АДРЕС_СЕРВЕРА>/update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
 	req := exp.client.R()
 	req.URL = fmt.Sprintf("http://%s:%d/update/%s/%s/%s",
-			exp.host,
-			exp.port,
-			metric.GetType(),
-			metric.GetName(),
-			metric.GetStringValue())
+		exp.host,
+		exp.port,
+		metric.GetType(),
+		metric.GetName(),
+		metric.GetStringValue())
 	req.Method = http.MethodPost
 	req.SetHeader("Content-Type", "text/plain")
 

@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
+	"time"
+
 	"eridiumdev/yandex-praktikum-go-devops/cmd/agent/collectors"
 	"eridiumdev/yandex-praktikum-go-devops/cmd/agent/exporters"
 	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
-	"time"
 )
 
 type Agent struct {

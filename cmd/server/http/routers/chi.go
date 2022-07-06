@@ -1,9 +1,10 @@
 package routers
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"net/http"
 )
 
 type ChiRouter struct {

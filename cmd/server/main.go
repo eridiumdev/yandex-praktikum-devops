@@ -2,16 +2,17 @@ package main
 
 import (
 	"context"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	_http "eridiumdev/yandex-praktikum-go-devops/cmd/server/http"
 	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/handlers"
 	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/routers"
 	"eridiumdev/yandex-praktikum-go-devops/cmd/server/rendering"
 	"eridiumdev/yandex-praktikum-go-devops/cmd/server/storage"
 	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 )
 
 const (
