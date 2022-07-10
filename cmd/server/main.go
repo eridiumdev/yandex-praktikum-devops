@@ -7,12 +7,15 @@ import (
 	"syscall"
 	"time"
 
-	_http "eridiumdev/yandex-praktikum-go-devops/cmd/server/http"
-	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/handlers"
-	"eridiumdev/yandex-praktikum-go-devops/cmd/server/http/routers"
-	"eridiumdev/yandex-praktikum-go-devops/cmd/server/rendering"
-	"eridiumdev/yandex-praktikum-go-devops/cmd/server/storage"
-	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
+	"github.com/go-chi/chi/middleware"
+
+	_http "eridiumdev/yandex-praktikum-go-devops/cmd/server/delivery/http"
+	"eridiumdev/yandex-praktikum-go-devops/cmd/server/delivery/http/handlers"
+	"eridiumdev/yandex-praktikum-go-devops/cmd/server/delivery/http/routers"
+	"eridiumdev/yandex-praktikum-go-devops/internal/commons/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/commons/rendering"
+	metricsRendering "eridiumdev/yandex-praktikum-go-devops/internal/metrics/server/rendering"
+	metricsRepository "eridiumdev/yandex-praktikum-go-devops/internal/metrics/server/repository"
 )
 
 const (
@@ -32,20 +35,24 @@ func main() {
 	logger.Init(LogLevel)
 	logger.Infof("Logger started")
 
-	// Init storage
-	inMemStorage := storage.NewInMemStorage()
+	// Init repos
+	metricsRepo := metricsRepository.NewInMemRepo()
 
 	// Init rendering engines
-	htmlEngine := rendering.NewHTMLEngine("rendering/templates/html")
+	templateParser := rendering.NewHTMLTemplateParser("rendering/templates")
+	metricsRenderer := metricsRendering.NewHTMLEngine(templateParser)
 
 	// Init router
-	router := routers.NewChiRouter()
+	router := routers.NewChiRouter(middleware.Logger, middleware.Recoverer)
 
 	// Init handlers
-	_ = handlers.NewMetricsHandler(router, inMemStorage, htmlEngine)
+	_ = handlers.NewMetricsHandler(router, metricsRepo, metricsRenderer)
 
 	// Init HTTP server
-	server := _http.NewServer(router, HTTPHost, HTTPPort)
+	server := _http.NewServer(router, _http.ServerSettings{
+		Host: HTTPHost,
+		Port: HTTPPort,
+	})
 
 	// Start server
 	logger.Infof("Starting HTTP server on %s:%d", HTTPHost, HTTPPort)

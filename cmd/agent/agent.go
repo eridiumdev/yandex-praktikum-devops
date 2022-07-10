@@ -4,42 +4,37 @@ import (
 	"context"
 	"time"
 
-	"eridiumdev/yandex-praktikum-go-devops/cmd/agent/collectors"
-	"eridiumdev/yandex-praktikum-go-devops/cmd/agent/exporters"
-	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics"
+	"eridiumdev/yandex-praktikum-go-devops/internal/commons/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/agent"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 
-type Agent struct {
-	collectInterval time.Duration
-	exportInterval  time.Duration
-
-	collectors []collectors.Collector
-	exporters  []exporters.Exporter
-
-	metricsChannel chan metrics.Metric
-	metricsBuffer  []metrics.Metric
-
-	flushMetricsBuffer chan interface{}
+type AgentSettings struct {
+	CollectInterval time.Duration
+	ExportInterval  time.Duration
 }
 
-func NewAgent(collectInterval time.Duration, exportInterval time.Duration) *Agent {
+type Agent struct {
+	AgentSettings
+	collectors []agent.MetricsCollector
+	exporters  []agent.MetricsExporter
+	bufferer   agent.MetricsBufferer
+}
+
+func NewAgent(settings AgentSettings, bufferer agent.MetricsBufferer) *Agent {
 	return &Agent{
-		collectInterval:    collectInterval,
-		exportInterval:     exportInterval,
-		collectors:         []collectors.Collector{},
-		exporters:          []exporters.Exporter{},
-		metricsChannel:     make(chan metrics.Metric),
-		metricsBuffer:      []metrics.Metric{},
-		flushMetricsBuffer: make(chan interface{}),
+		AgentSettings: settings,
+		collectors:    []agent.MetricsCollector{},
+		exporters:     []agent.MetricsExporter{},
+		bufferer:      bufferer,
 	}
 }
 
-func (a *Agent) AddCollector(col collectors.Collector) {
+func (a *Agent) AddCollector(col agent.MetricsCollector) {
 	a.collectors = append(a.collectors, col)
 }
 
-func (a *Agent) AddExporter(exp exporters.Exporter) {
+func (a *Agent) AddExporter(exp agent.MetricsExporter) {
 	a.exporters = append(a.exporters, exp)
 }
 
@@ -47,7 +42,7 @@ func (a *Agent) StartCollecting(ctx context.Context) {
 	collectCycles := 0
 	for {
 		select {
-		case <-time.Tick(a.collectInterval):
+		case <-time.Tick(a.CollectInterval):
 			collectCycles++
 			logger.Debugf("[agent] collecting cycle %d", collectCycles)
 			for _, col := range a.collectors {
@@ -64,58 +59,20 @@ func (a *Agent) StartExporting(ctx context.Context) {
 	exportCycles := 0
 	for {
 		select {
-		case <-time.Tick(a.exportInterval):
+		case <-time.Tick(a.ExportInterval):
 			exportCycles++
 			logger.Debugf("[agent] exporting cycle %d", exportCycles)
+
+			// Get current bufferer snapshot
+			bufferSnapshot := a.bufferer.Retrieve()
+			// Send metrics to exporters
 			for _, exp := range a.exporters {
-				go a.exportMetrics(ctx, exp, a.metricsBuffer)
+				go a.exportMetrics(ctx, exp, bufferSnapshot)
 			}
-			go func() {
-				a.flushMetricsBuffer <- true
-			}()
+			// Flush the bufferer after exporting
+			a.bufferer.Flush()
 		case <-ctx.Done():
 			logger.Debugf("[agent] context cancelled, exporting stopped")
-			return
-		}
-	}
-}
-
-func (a *Agent) StartBuffering(ctx context.Context) {
-	for {
-		select {
-		case metric := <-a.metricsChannel:
-			found := false
-			for i, m := range a.metricsBuffer {
-				if m.GetName() == metric.GetName() {
-					found = true
-					switch m.GetType() {
-					case metrics.TypeCounter:
-						// Add value on top of previous value
-						sum := m.GetValue().(metrics.Counter) + metric.GetValue().(metrics.Counter)
-						a.metricsBuffer[i] = metrics.CounterMetric{
-							AbstractMetric: metrics.AbstractMetric{
-								Name: m.GetName(),
-							},
-							Value: sum,
-						}
-					case metrics.TypeGauge:
-						fallthrough
-					default:
-						// Overwrite old value
-						a.metricsBuffer[i] = metric
-					}
-					break
-				}
-			}
-			if !found {
-				// Add metric to buffer for the first time
-				a.metricsBuffer = append(a.metricsBuffer, metric)
-			}
-		case <-a.flushMetricsBuffer:
-			logger.Debugf("[agent] metrics buffer flushed")
-			a.metricsBuffer = []metrics.Metric{}
-		case <-ctx.Done():
-			logger.Debugf("[agent] context cancelled, buffering stopped")
 			return
 		}
 	}
@@ -132,37 +89,35 @@ func (a *Agent) Stop() {
 	}
 }
 
-func (a *Agent) collectMetrics(ctx context.Context, col collectors.Collector) {
+func (a *Agent) collectMetrics(ctx context.Context, col agent.MetricsCollector) {
 	select {
 	case <-col.Ready():
-		logger.Debugf("[%s collector] start collecting metrics", col.GetName())
+		logger.Debugf("[%s collector] start collecting metrics", col.Name())
 		snapshot, err := col.Collect(ctx)
 		if err != nil {
-			logger.Errorf("[%s collector] error when collecting metrics: %s", col.GetName(), err.Error())
+			logger.Errorf("[%s collector] error when collecting metrics: %s", col.Name(), err.Error())
 		}
-		for _, metric := range snapshot {
-			a.metricsChannel <- metric
-		}
-		logger.Debugf("[%s collector] finish collecting metrics", col.GetName())
-	case <-time.After(a.collectInterval):
-		logger.Errorf("[%s collector] timeout when collecting metrics: collector not yet ready", col.GetName())
+		a.bufferer.Buffer(snapshot)
+		logger.Debugf("[%s collector] finish collecting metrics", col.Name())
+	case <-time.After(a.CollectInterval):
+		logger.Errorf("[%s collector] timeout when collecting metrics: collector not yet ready", col.Name())
 	case <-ctx.Done():
-		logger.Debugf("[%s collector] context cancelled, skip collecting", col.GetName())
+		logger.Debugf("[%s collector] context cancelled, skip collecting", col.Name())
 	}
 }
 
-func (a *Agent) exportMetrics(ctx context.Context, exp exporters.Exporter, metrics []metrics.Metric) {
+func (a *Agent) exportMetrics(ctx context.Context, exp agent.MetricsExporter, metrics []domain.Metric) {
 	select {
 	case <-exp.Ready():
-		logger.Debugf("[%s exporter] start exporting metrics", exp.GetName())
+		logger.Debugf("[%s exporter] start exporting metrics", exp.Name())
 		err := exp.Export(ctx, metrics)
 		if err != nil {
-			logger.Errorf("[%s exporter] error when exporting metrics: %s", exp.GetName(), err.Error())
+			logger.Errorf("[%s exporter] error when exporting metrics: %s", exp.Name(), err.Error())
 		}
-		logger.Debugf("[%s exporter] finish exporting metrics", exp.GetName())
-	case <-time.After(a.exportInterval):
-		logger.Errorf("[%s exporter] timeout when exporting metrics: exporter not yet ready", exp.GetName())
+		logger.Debugf("[%s exporter] finish exporting metrics", exp.Name())
+	case <-time.After(a.ExportInterval):
+		logger.Errorf("[%s exporter] timeout when exporting metrics: exporter not yet ready", exp.Name())
 	case <-ctx.Done():
-		logger.Debugf("[%s exporter] context cancelled, skip exporting", exp.GetName())
+		logger.Debugf("[%s exporter] context cancelled, skip exporting", exp.Name())
 	}
 }

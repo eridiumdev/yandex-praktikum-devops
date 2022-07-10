@@ -7,9 +7,10 @@ import (
 	"syscall"
 	"time"
 
-	"eridiumdev/yandex-praktikum-go-devops/cmd/agent/collectors"
-	"eridiumdev/yandex-praktikum-go-devops/cmd/agent/exporters"
-	"eridiumdev/yandex-praktikum-go-devops/internal/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/commons/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/agent/buffering"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/agent/executors/collectors"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/agent/executors/exporters"
 )
 
 const (
@@ -30,9 +31,9 @@ const (
 	RandomValueMin = 0
 	RandomValueMax = 9999
 
-	HTTPHost    = "127.0.0.1"
-	HTTPPort    = 8080
-	HTTPTimeout = 3 * time.Second
+	HTTPExporterHost    = "127.0.0.1"
+	HTTPExporterPort    = 8080
+	HTTPExporterTimeout = 3 * time.Second
 )
 
 func main() {
@@ -43,8 +44,11 @@ func main() {
 	logger.Init(LogLevel)
 	logger.Infof("Logger started")
 
+	// Init buffer for metrics
+	metricsBuffer := buffering.NewInMemBuffer()
+
 	// Init agent
-	agent := NewAgent(CollectInterval, ExportInterval)
+	agent := NewAgent(AgentSettings{CollectInterval: CollectInterval, ExportInterval: ExportInterval}, metricsBuffer)
 
 	// Init collectors
 	runtimeCollector := collectors.NewRuntimeCollector("runtime")
@@ -67,14 +71,16 @@ func main() {
 	}
 	if exporterEnabled(HTTPExporter) {
 		// HTTPExporter is the main exporter for Yandex-Practicum tasks
-		httpExporter := exporters.NewHTTPExporter("http", HTTPHost, HTTPPort, HTTPTimeout)
+		httpExporter := exporters.NewHTTPExporter("http", exporters.HTTPExporterSettings{
+			Host:    HTTPExporterHost,
+			Port:    HTTPExporterPort,
+			Timeout: HTTPExporterTimeout,
+		})
 		agent.AddExporter(httpExporter)
 	}
 
 	// Start agent
 	go agent.StartCollecting(ctx)
-	// Buffering will buffer metrics before exporting
-	go agent.StartBuffering(ctx)
 	// Wait one CollectInterval before running first export
 	time.AfterFunc(CollectInterval, func() {
 		agent.StartExporting(ctx)
