@@ -22,7 +22,7 @@ const (
 	LogLevel = logger.LevelInfo
 	LogMode  = logger.ModeDevelopment
 
-	HTTPHost = "127.0.0.1"
+	HTTPHost = "0.0.0.0"
 	HTTPPort = 8080
 
 	ShutdownTimeout = 3 * time.Second
