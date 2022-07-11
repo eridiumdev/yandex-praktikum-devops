@@ -34,6 +34,9 @@ func (h *AbstractHandler) write(w http.ResponseWriter, status int, body []byte, 
 	w.Header().Set("Content-Type", contentType)
 	w.WriteHeader(status)
 	if body != nil {
-		w.Write(body)
+		_, err := w.Write(body)
+		if err != nil {
+			logger.Errorf("could not write body to writer")
+		}
 	}
 }

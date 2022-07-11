@@ -9,7 +9,6 @@ import (
 
 type pollCountCollector struct {
 	*executors.Executor
-	pollCount domain.Counter
 }
 
 func NewPollCountCollector(name string) *pollCountCollector {

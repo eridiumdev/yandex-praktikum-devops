@@ -20,6 +20,7 @@ const (
 
 const (
 	LogLevel = logger.LevelInfo
+	LogMode  = logger.ModeDevelopment
 
 	//ExportersEnabled = LogExporter
 	ExportersEnabled = HTTPExporter
@@ -40,8 +41,8 @@ func main() {
 	// Init context
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// Init custom logger
-	logger.Init(LogLevel)
+	// Init logger
+	logger.Init(LogLevel, LogMode)
 	logger.Infof("Logger started")
 
 	// Init buffer for metrics

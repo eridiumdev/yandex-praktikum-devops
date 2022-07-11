@@ -20,6 +20,7 @@ import (
 
 const (
 	LogLevel = logger.LevelInfo
+	LogMode  = logger.ModeDevelopment
 
 	HTTPHost = "127.0.0.1"
 	HTTPPort = 8080
@@ -31,8 +32,8 @@ func main() {
 	// Init context
 	ctx := context.Background()
 
-	// Init custom logger
-	logger.Init(LogLevel)
+	// Init logger
+	logger.Init(LogLevel, LogMode)
 	logger.Infof("Logger started")
 
 	// Init repos
@@ -43,7 +44,7 @@ func main() {
 	metricsRenderer := metricsRendering.NewHTMLEngine(templateParser)
 
 	// Init router
-	router := routers.NewChiRouter(middleware.Logger, middleware.Recoverer)
+	router := routers.NewChiRouter(logger.Middleware, middleware.Recoverer)
 
 	// Init handlers
 	_ = handlers.NewMetricsHandler(router, metricsRepo, metricsRenderer)

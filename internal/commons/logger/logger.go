@@ -1,8 +1,13 @@
 package logger
 
 import (
-	"log"
+	"net/http"
 	"os"
+	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/hlog"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -12,42 +17,68 @@ const (
 	LevelDebug
 )
 
-type Logger struct {
-	stdout *log.Logger
-	stderr *log.Logger
-	level  int
+const (
+	ModeDevelopment = iota
+	ModeProduction
+)
+
+func Init(level uint8, mode uint8) {
+	zerolog.SetGlobalLevel(convertToZerologLevel(level))
+
+	switch mode {
+	case ModeProduction:
+		log.Logger = log.Output(os.Stdout)
+	case ModeDevelopment:
+		fallthrough
+	default:
+		log.Logger = log.Output(zerolog.ConsoleWriter{
+			Out:        os.Stdout,
+			TimeFormat: time.RFC3339,
+		})
+	}
 }
 
-var l *Logger
-
-func Init(level int) {
-	l = &Logger{
-		stdout: log.New(os.Stdout, "", log.LstdFlags),
-		stderr: log.New(os.Stderr, "", log.LstdFlags),
-		level:  level,
-	}
+func Middleware(next http.Handler) http.Handler {
+	middleware1 := hlog.NewHandler(log.Logger)
+	middleware2 := hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
+		hlog.FromRequest(r).Info().
+			Str("method", r.Method).
+			Stringer("url", r.URL).
+			Int("status", status).
+			Int("size", size).
+			Dur("duration", duration).
+			Msg("http request")
+	})
+	return middleware1(middleware2(next))
 }
 
 func Fatalf(format string, v ...interface{}) {
-	if l != nil && l.level >= LevelCritical {
-		l.stderr.Fatalf("[CRIT] "+format, v...)
-	}
+	log.Fatal().Msgf(format, v...)
 }
 
 func Errorf(format string, v ...interface{}) {
-	if l != nil && l.level >= LevelError {
-		l.stderr.Printf("[ERR] "+format, v...)
-	}
+	log.Error().Msgf(format, v...)
 }
 
 func Infof(format string, v ...interface{}) {
-	if l != nil && l.level >= LevelInfo {
-		l.stdout.Printf("[INFO] "+format, v...)
-	}
+	log.Info().Msgf(format, v...)
 }
 
 func Debugf(format string, v ...interface{}) {
-	if l != nil && l.level >= LevelDebug {
-		l.stdout.Printf("[DEBUG] "+format, v...)
+	log.Debug().Msgf(format, v...)
+}
+
+func convertToZerologLevel(level uint8) zerolog.Level {
+	switch level {
+	case LevelCritical:
+		return zerolog.FatalLevel
+	case LevelError:
+		return zerolog.ErrorLevel
+	case LevelDebug:
+		return zerolog.DebugLevel
+	case LevelInfo:
+		fallthrough
+	default:
+		return zerolog.InfoLevel
 	}
 }
