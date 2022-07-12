@@ -40,7 +40,7 @@ func main() {
 	metricsRepo := metricsRepository.NewInMemRepo()
 
 	// Init rendering engines
-	templateParser := rendering.NewHTMLTemplateParser("rendering/templates")
+	templateParser := rendering.NewHTMLTemplateParser("web/templates")
 	metricsRenderer := metricsRendering.NewHTMLEngine(templateParser)
 
 	// Init router
