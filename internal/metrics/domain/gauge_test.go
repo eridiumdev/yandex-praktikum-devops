@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGaugeStringValue(t *testing.T) {
@@ -36,7 +37,11 @@ func TestGaugeStringValue(t *testing.T) {
 		{
 			name:   "very big number",
 			metric: NewGauge(Alloc, math.MaxFloat64),
-			want:   "179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0",
+			want: "17976931348623157081452742373170435679807056752584499659891747" +
+				"6803157260780028538760589558632766878171540458953514382464234321326" +
+				"8894641827684675467035375169860499105765512820762454900903893289440" +
+				"7586850845513394230458323690322294816580855933212334827479782620414" +
+				"4723168738177180919299881250404026184124858368.0",
 		},
 	}
 	for _, tt := range tests {
@@ -46,7 +51,7 @@ func TestGaugeStringValue(t *testing.T) {
 	}
 }
 
-func TestGaugeUpdate(t *testing.T) {
+func TestGaugeSet(t *testing.T) {
 	tests := []struct {
 		name  string
 		have  *gauge
@@ -81,7 +86,8 @@ func TestGaugeUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			want := tt.value
-			tt.have.Update(tt.value)
+			err := tt.have.Set(tt.value)
+			require.NoError(t, err)
 			assert.Equal(t, want, tt.have.value)
 		})
 	}

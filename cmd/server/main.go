@@ -9,13 +9,13 @@ import (
 
 	"github.com/go-chi/chi/middleware"
 
-	_http "eridiumdev/yandex-praktikum-go-devops/cmd/server/delivery/http"
-	"eridiumdev/yandex-praktikum-go-devops/cmd/server/delivery/http/handlers"
-	"eridiumdev/yandex-praktikum-go-devops/cmd/server/delivery/http/routers"
 	"eridiumdev/yandex-praktikum-go-devops/internal/commons/logger"
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/rendering"
-	metricsRendering "eridiumdev/yandex-praktikum-go-devops/internal/metrics/server/rendering"
-	metricsRepository "eridiumdev/yandex-praktikum-go-devops/internal/metrics/server/repository"
+	"eridiumdev/yandex-praktikum-go-devops/internal/commons/routing"
+	"eridiumdev/yandex-praktikum-go-devops/internal/commons/templating"
+	metricsHttpDelivery "eridiumdev/yandex-praktikum-go-devops/internal/metrics/delivery/http"
+	metricsRendering "eridiumdev/yandex-praktikum-go-devops/internal/metrics/rendering"
+	metricsRepository "eridiumdev/yandex-praktikum-go-devops/internal/metrics/repository"
+	_metricsService "eridiumdev/yandex-praktikum-go-devops/internal/metrics/service"
 )
 
 const (
@@ -39,18 +39,21 @@ func main() {
 	// Init repos
 	metricsRepo := metricsRepository.NewInMemRepo()
 
+	// Init services
+	metricsService := _metricsService.NewMetricsService(metricsRepo)
+
 	// Init rendering engines
-	templateParser := rendering.NewHTMLTemplateParser("web/templates")
+	templateParser := templating.NewHTMLTemplateParser("web/templates")
 	metricsRenderer := metricsRendering.NewHTMLEngine(templateParser)
 
 	// Init router
-	router := routers.NewChiRouter(logger.Middleware, middleware.Recoverer)
+	router := routing.NewChiRouter(logger.Middleware, middleware.Recoverer)
 
 	// Init handlers
-	_ = handlers.NewMetricsHandler(router, metricsRepo, metricsRenderer)
+	_ = metricsHttpDelivery.NewMetricsHandler(router, metricsService, metricsRenderer)
 
 	// Init HTTP server
-	server := _http.NewServer(router, _http.ServerSettings{
+	server := NewServer(router.GetHandler(), ServerSettings{
 		Host: HTTPHost,
 		Port: HTTPPort,
 	})

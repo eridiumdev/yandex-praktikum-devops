@@ -1,6 +1,9 @@
 package domain
 
-import "strconv"
+import (
+	"errors"
+	"strconv"
+)
 
 type Counter int64
 
@@ -8,6 +11,8 @@ type counter struct {
 	*abstractMetric
 	value Counter
 }
+
+var ErrMetricValueNotCounter = errors.New("metric value is not a Counter")
 
 func NewCounter(name string, value Counter) *counter {
 	return &counter{
@@ -30,9 +35,22 @@ func (m *counter) StringValue() string {
 	return strconv.FormatInt(int64(m.value), 10)
 }
 
-// Update increments counter value
-func (m *counter) Update(value MetricValue) {
-	m.value += value.(Counter)
+func (m *counter) Add(value MetricValue) error {
+	val, ok := value.(Counter)
+	if !ok {
+		return ErrMetricValueNotCounter
+	}
+	m.value += val
+	return nil
+}
+
+func (m *counter) Set(value MetricValue) error {
+	val, ok := value.(Counter)
+	if !ok {
+		return ErrMetricValueNotCounter
+	}
+	m.value = val
+	return nil
 }
 
 // Copy creates a copy of counter with same name/value

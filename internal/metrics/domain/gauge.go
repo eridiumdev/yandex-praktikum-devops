@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 )
@@ -11,6 +12,8 @@ type gauge struct {
 	*abstractMetric
 	value Gauge
 }
+
+var ErrMetricValueNotGauge = errors.New("metric value is not a Counter")
 
 func NewGauge(name string, value Gauge) *gauge {
 	return &gauge{
@@ -31,18 +34,30 @@ func (m *gauge) Value() MetricValue {
 
 func (m *gauge) StringValue() string {
 	trimmed := strings.TrimRight(strconv.FormatFloat(float64(m.value), 'f', 6, 64), "0")
-	if trimmed[len(trimmed) - 1] == '.' {
+	if trimmed[len(trimmed)-1] == '.' {
 		// Add zero after decimal point
 		// e.g. '10.000000' after trimming will be '10.' -> add '0' to become '10.0'
 		return trimmed + "0"
-	} else {
-		return trimmed
 	}
+	return trimmed
 }
 
-// Update resets current gauge value
-func (m *gauge) Update(value MetricValue) {
-	m.value = value.(Gauge)
+func (m *gauge) Add(value MetricValue) error {
+	val, ok := value.(Gauge)
+	if !ok {
+		return ErrMetricValueNotGauge
+	}
+	m.value += val
+	return nil
+}
+
+func (m *gauge) Set(value MetricValue) error {
+	val, ok := value.(Gauge)
+	if !ok {
+		return ErrMetricValueNotGauge
+	}
+	m.value = val
+	return nil
 }
 
 // Copy creates a copy of gauge with same name/value

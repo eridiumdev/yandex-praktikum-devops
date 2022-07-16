@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCounterStringValue(t *testing.T) {
@@ -41,7 +42,7 @@ func TestCounterStringValue(t *testing.T) {
 	}
 }
 
-func TestCounterUpdate(t *testing.T) {
+func TestCounterAdd(t *testing.T) {
 	tests := []struct {
 		name  string
 		have  *counter
@@ -69,7 +70,8 @@ func TestCounterUpdate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.have.Update(tt.value)
+			err := tt.have.Add(tt.value)
+			require.NoError(t, err)
 			assert.Equal(t, tt.want, tt.have.value)
 		})
 	}

@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"eridiumdev/yandex-praktikum-go-devops/internal/commons/logger"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/agent/buffering"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/agent/executors/collectors"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/agent/executors/exporters"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/buffering"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/executors/collectors"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/executors/exporters"
 )
 
 const (
@@ -22,7 +22,7 @@ const (
 	LogLevel = logger.LevelInfo
 	LogMode  = logger.ModeDevelopment
 
-	//ExportersEnabled = LogExporter
+	// ExportersEnabled = LogExporter
 	ExportersEnabled = HTTPExporter
 
 	CollectInterval = 2 * time.Second

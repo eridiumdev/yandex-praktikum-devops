@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"eridiumdev/yandex-praktikum-go-devops/internal/commons/logger"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/agent"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 
@@ -16,25 +15,25 @@ type AgentSettings struct {
 
 type Agent struct {
 	AgentSettings
-	collectors []agent.MetricsCollector
-	exporters  []agent.MetricsExporter
-	bufferer   agent.MetricsBufferer
+	collectors []MetricsCollector
+	exporters  []MetricsExporter
+	bufferer   MetricsBufferer
 }
 
-func NewAgent(settings AgentSettings, bufferer agent.MetricsBufferer) *Agent {
+func NewAgent(settings AgentSettings, bufferer MetricsBufferer) *Agent {
 	return &Agent{
 		AgentSettings: settings,
-		collectors:    []agent.MetricsCollector{},
-		exporters:     []agent.MetricsExporter{},
+		collectors:    []MetricsCollector{},
+		exporters:     []MetricsExporter{},
 		bufferer:      bufferer,
 	}
 }
 
-func (a *Agent) AddCollector(col agent.MetricsCollector) {
+func (a *Agent) AddCollector(col MetricsCollector) {
 	a.collectors = append(a.collectors, col)
 }
 
-func (a *Agent) AddExporter(exp agent.MetricsExporter) {
+func (a *Agent) AddExporter(exp MetricsExporter) {
 	a.exporters = append(a.exporters, exp)
 }
 
@@ -89,7 +88,7 @@ func (a *Agent) Stop() {
 	}
 }
 
-func (a *Agent) collectMetrics(ctx context.Context, col agent.MetricsCollector) {
+func (a *Agent) collectMetrics(ctx context.Context, col MetricsCollector) {
 	select {
 	case <-col.Ready():
 		logger.Debugf("[%s collector] start collecting metrics", col.Name())
@@ -106,7 +105,7 @@ func (a *Agent) collectMetrics(ctx context.Context, col agent.MetricsCollector) 
 	}
 }
 
-func (a *Agent) exportMetrics(ctx context.Context, exp agent.MetricsExporter, metrics []domain.Metric) {
+func (a *Agent) exportMetrics(ctx context.Context, exp MetricsExporter, metrics []domain.Metric) {
 	select {
 	case <-exp.Ready():
 		logger.Debugf("[%s exporter] start exporting metrics", exp.Name())
