@@ -18,9 +18,9 @@ func TestRuntimeCollect(t *testing.T) {
 	assert.Greater(t, len(snapshot), 0)
 
 	for _, m := range snapshot {
-		if m.Name() == domain.Alloc {
-			assert.Equal(t, domain.TypeGauge, m.Type())
-			assert.NotNil(t, m.Value())
+		if m.Name == domain.Alloc {
+			assert.Equal(t, domain.TypeGauge, m.Type)
+			assert.NotNil(t, m.Gauge)
 			break
 		}
 	}

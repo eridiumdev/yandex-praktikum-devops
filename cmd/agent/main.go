@@ -7,7 +7,7 @@ import (
 	"syscall"
 	"time"
 
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/buffering"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/executors/collectors"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/executors/exporters"

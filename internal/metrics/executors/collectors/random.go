@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/executor"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/executor"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 

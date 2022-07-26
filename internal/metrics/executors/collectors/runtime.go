@@ -4,7 +4,7 @@ import (
 	"context"
 	"runtime"
 
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/executor"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/executor"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 

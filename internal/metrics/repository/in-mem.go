@@ -18,35 +18,28 @@ func NewInMemRepo() *inMemRepo {
 	}
 }
 
-func (r *inMemRepo) Store(metric domain.Metric) error {
+func (r *inMemRepo) Store(metric domain.Metric) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	// Add copy of metric to avoid phantom changes
-	r.metrics[metric.Name()] = metric.Copy()
-	return nil
+	r.metrics[metric.Name] = metric
 }
 
-func (r *inMemRepo) Get(metricName string) (domain.Metric, error) {
+func (r *inMemRepo) Get(name string) (domain.Metric, bool) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
-	metric, ok := r.metrics[metricName]
-	if !ok {
-		return nil, nil
-	}
-	// Return a copy of metric to avoid phantom changes
-	return metric.Copy(), nil
+	metric, ok := r.metrics[name]
+	return metric, ok
 }
 
-func (r *inMemRepo) List() ([]domain.Metric, error) {
+func (r *inMemRepo) List() []domain.Metric {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
 	result := make([]domain.Metric, 0)
 	for _, metric := range r.metrics {
-		// Append a copy of metric to avoid phantom changes
-		result = append(result, metric.Copy())
+		result = append(result, metric)
 	}
-	return result, nil
+	return result
 }

@@ -8,7 +8,7 @@ import (
 
 // MetricsRepository should store and retrieve metrics using backend storage
 type MetricsRepository interface {
-	Store(metric domain.Metric) error
-	Get(metricName string) (domain.Metric, error)
-	List() ([]domain.Metric, error)
+	Store(metric domain.Metric)
+	Get(name string) (metric domain.Metric, found bool)
+	List() []domain.Metric
 }

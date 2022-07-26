@@ -1,8 +1,8 @@
 package http
 
 import (
+	"bytes"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/logger"
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/routing"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/routing"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/repository"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/service"
@@ -27,7 +27,7 @@ func (e *dummyRenderer) RenderList(list []domain.Metric) ([]byte, error) {
 		if i > 0 {
 			html += " | "
 		}
-		html += fmt.Sprintf("%s : %s", m.Name(), m.StringValue())
+		html += fmt.Sprintf("%s : %s", m.Name, m.StringValue())
 	}
 	html += "</html>"
 	return []byte(html), nil
@@ -39,8 +39,8 @@ func getDummyRenderer() *dummyRenderer {
 
 func getDummyRepo() service.MetricsRepository {
 	r := repository.NewInMemRepo()
-	_ = r.Store(domain.NewCounter(domain.PollCount, 5))
-	_ = r.Store(domain.NewGauge(domain.Alloc, 10.123))
+	r.Store(domain.NewCounter(domain.PollCount, 5))
+	r.Store(domain.NewGauge(domain.Alloc, 10.123))
 	return r
 }
 
@@ -54,26 +54,32 @@ type TestCase struct {
 	name   string
 	url    string
 	method string
-	body   io.Reader
+	body   string
 	want   Want
 }
 
-func runTests(t *testing.T, tt TestCase) {
+func init() {
 	logger.Init(logger.LevelCritical, logger.ModeDevelopment)
+}
+
+func runTests(t *testing.T, tt TestCase) {
 	r := routing.NewChiRouter()
 	svc := service.NewMetricsService(getDummyRepo())
-	_ = NewMetricsHandler(r, svc, getDummyRenderer())
+	NewMetricsHandler(r, svc, getDummyRenderer())
 	s := httptest.NewServer(r.Mux)
 	defer s.Close()
 
-	req, err := http.NewRequest(tt.method, s.URL+tt.url, tt.body)
+	buffer := bytes.Buffer{}
+	buffer.Write([]byte(tt.body))
+
+	req, err := http.NewRequest(tt.method, s.URL+tt.url, &buffer)
 	require.NoError(t, err)
 
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
+	resp, doErr := http.DefaultClient.Do(req)
+	require.NoError(t, doErr)
 
-	body, err := ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
+	body, readErr := ioutil.ReadAll(resp.Body)
+	require.NoError(t, readErr)
 	defer resp.Body.Close()
 
 	assert.Equal(t, tt.want.code, resp.StatusCode, "status code")
@@ -90,31 +96,31 @@ func TestUpdate(t *testing.T) {
 	tests := []TestCase{
 		{
 			name:   "positive test: counter",
-			url:    "/update/counter/PollCount/5",
+			url:    "/update",
 			method: http.MethodPost,
-			body:   nil,
+			body:   `{"id":"PollCount","type":"counter","delta":5}`,
 			want: Want{
 				code:        http.StatusOK,
-				response:    "",
-				contentType: "text/plain; charset=utf-8",
+				response:    `{"id":"PollCount","type":"counter","delta":5}`,
+				contentType: "application/json; charset=utf-8",
 			},
 		},
 		{
 			name:   "positive test: gauge",
-			url:    "/update/gauge/Alloc/10.20",
+			url:    "/update",
 			method: http.MethodPost,
-			body:   nil,
+			body:   `{"id":"Alloc","type":"gauge","value":10.20}`,
 			want: Want{
 				code:        http.StatusOK,
-				response:    "",
-				contentType: "text/plain; charset=utf-8",
+				response:    `{"id":"Alloc","type":"gauge","value":10.2}`,
+				contentType: "application/json; charset=utf-8",
 			},
 		},
 		{
 			name:   "negative test: bad url",
 			url:    "/update/123",
 			method: http.MethodPost,
-			body:   nil,
+			body:   `{"id":"PollCount","type":"counter","delta":5}`,
 			want: Want{
 				code:        http.StatusNotFound,
 				response:    "404 page not found",
@@ -123,34 +129,45 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name:   "negative test: bad counter value",
-			url:    "/update/counter/PollCount/10.20",
+			url:    "/update",
 			method: http.MethodPost,
-			body:   nil,
+			body:   `{"id":"PollCount","type":"counter","delta":"abcd"}`,
 			want: Want{
 				code:        http.StatusBadRequest,
-				response:    ErrStringInvalidMetricValue,
+				response:    ErrStringInvalidJSON,
 				contentType: "text/plain; charset=utf-8",
 			},
 		},
 		{
 			name:   "negative test: bad gauge value",
-			url:    "/update/gauge/Alloc/abcd",
+			url:    "/update",
 			method: http.MethodPost,
-			body:   nil,
+			body:   `{"id":"Alloc","type":"counter","delta":"abcd"}`,
 			want: Want{
 				code:        http.StatusBadRequest,
-				response:    ErrStringInvalidMetricValue,
+				response:    ErrStringInvalidJSON,
 				contentType: "text/plain; charset=utf-8",
 			},
 		},
 		{
 			name:   "negative test: bad metric type",
-			url:    "/update/unknown/testCounter/100",
+			url:    "/update",
 			method: http.MethodPost,
-			body:   nil,
+			body:   `{"id":"PollCount","type":"unknown"}`,
 			want: Want{
 				code:        http.StatusNotImplemented,
 				response:    ErrStringInvalidMetricType,
+				contentType: "text/plain; charset=utf-8",
+			},
+		},
+		{
+			name:   "negative test: invalid JSON",
+			url:    "/update",
+			method: http.MethodPost,
+			body:   `{123}`,
+			want: Want{
+				code:        http.StatusBadRequest,
+				response:    ErrStringInvalidJSON,
 				contentType: "text/plain; charset=utf-8",
 			},
 		},
@@ -166,31 +183,31 @@ func TestGet(t *testing.T) {
 	tests := []TestCase{
 		{
 			name:   "positive test: counter",
-			url:    "/value/counter/PollCount",
-			body:   nil,
-			method: http.MethodGet,
+			url:    "/value",
+			body:   `{"id":"PollCount","type":"counter"}`,
+			method: http.MethodPost,
 			want: Want{
 				code:        http.StatusOK,
-				response:    "5",
-				contentType: "text/plain; charset=utf-8",
+				response:    `{"id":"PollCount","type":"counter","delta":5}`,
+				contentType: "application/json; charset=utf-8",
 			},
 		},
 		{
 			name:   "positive test: gauge",
-			url:    "/value/gauge/Alloc",
-			method: http.MethodGet,
-			body:   nil,
+			url:    "/value",
+			method: http.MethodPost,
+			body:   `{"id":"Alloc","type":"gauge"}`,
 			want: Want{
 				code:        http.StatusOK,
-				response:    "10.123",
-				contentType: "text/plain; charset=utf-8",
+				response:    `{"id":"Alloc","type":"gauge","value":10.123}`,
+				contentType: "application/json; charset=utf-8",
 			},
 		},
 		{
 			name:   "negative test: bad url",
 			url:    "/value/123",
-			method: http.MethodGet,
-			body:   nil,
+			method: http.MethodPost,
+			body:   `{"id":"PollCount","type":"counter"}`,
 			want: Want{
 				code:        http.StatusNotFound,
 				response:    "404 page not found",
@@ -199,20 +216,20 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name:   "negative test: wrong metric type",
-			url:    "/value/counter/Alloc",
-			method: http.MethodGet,
-			body:   nil,
+			url:    "/value",
+			method: http.MethodPost,
+			body:   `{"id":"PollCount","type":"unknown"}`,
 			want: Want{
-				code:        http.StatusNotFound,
-				response:    ErrStringMetricNotFound,
+				code:        http.StatusNotImplemented,
+				response:    ErrStringInvalidMetricType,
 				contentType: "text/plain; charset=utf-8",
 			},
 		},
 		{
 			name:   "negative test: metric not found",
-			url:    "/value/counter/abcd",
-			method: http.MethodGet,
-			body:   nil,
+			url:    "/value",
+			method: http.MethodPost,
+			body:   `{"id":"abcd","type":"counter"}`,
 			want: Want{
 				code:        http.StatusNotFound,
 				response:    ErrStringMetricNotFound,
@@ -233,7 +250,7 @@ func TestList(t *testing.T) {
 			name:   "positive test",
 			url:    "/",
 			method: http.MethodGet,
-			body:   nil,
+			body:   "",
 			want: Want{
 				code:        http.StatusOK,
 				response:    "<html>Alloc : 10.123 | PollCount : 5</html>",

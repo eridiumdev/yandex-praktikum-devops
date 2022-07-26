@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/logger"
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/routing"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/routing"
 )
 
 type HTTPHandler struct {
@@ -20,7 +20,7 @@ func (h *HTTPHandler) HTML(w http.ResponseWriter, body []byte) {
 	h.write(w, http.StatusOK, body, "text/html; charset=utf-8")
 }
 
-func (h *HTTPHandler) JSON(w http.ResponseWriter, status int, data struct{}) {
+func (h *HTTPHandler) JSON(w http.ResponseWriter, status int, data interface{}) {
 	body, err := json.Marshal(data)
 	if err != nil {
 		logger.Errorf("error when marshaling data %v, responding with an empty json struct", data)

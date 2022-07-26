@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 

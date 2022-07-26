@@ -2,14 +2,15 @@ package exporters
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-resty/resty/v2"
 
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/executor"
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/executor"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 
@@ -44,9 +45,12 @@ func (exp *HTTPExporter) Export(ctx context.Context, mtx []domain.Metric) error 
 	}()
 
 	for _, metric := range mtx {
-		req := exp.prepareRequest(ctx, metric)
+		req, err := exp.prepareRequest(ctx, metric)
+		if err != nil {
+			return err
+		}
 		resp, err := req.Send()
-		logger.Infof("export %s: %s", metric.Name(), resp.Status())
+		logger.Infof("[http exporter] exported %s, status: %s", metric.Name, resp.Status())
 		if err != nil {
 			return err
 		}
@@ -54,17 +58,18 @@ func (exp *HTTPExporter) Export(ctx context.Context, mtx []domain.Metric) error 
 	return nil
 }
 
-func (exp *HTTPExporter) prepareRequest(ctx context.Context, metric domain.Metric) *resty.Request {
-	// http://<АДРЕС_СЕРВЕРА>/update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
-	req := exp.client.R().SetContext(ctx)
-	req.URL = fmt.Sprintf("http://%s:%d/update/%s/%s/%s",
-		exp.host,
-		exp.port,
-		metric.Type(),
-		metric.Name(),
-		metric.StringValue())
-	req.Method = http.MethodPost
-	req.SetHeader("Content-Type", "text/plain")
+func (exp *HTTPExporter) prepareRequest(ctx context.Context, metric domain.Metric) (*resty.Request, error) {
+	// http://<АДРЕС_СЕРВЕРА>/update
+	body, err := json.Marshal(domain.PrepareUpdateMetricRequest(metric))
+	if err != nil {
+		return nil, err
+	}
 
-	return req
+	req := exp.client.R().SetContext(ctx)
+	req.URL = fmt.Sprintf("http://%s:%d/update", exp.host, exp.port)
+	req.Method = http.MethodPost
+	req.SetBody(body)
+	req.SetHeader("Content-Type", "application/json")
+
+	return req, nil
 }

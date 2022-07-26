@@ -9,9 +9,9 @@ import (
 
 	"github.com/go-chi/chi/middleware"
 
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/logger"
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/routing"
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/templating"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/routing"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/templating"
 	metricsHttpDelivery "eridiumdev/yandex-praktikum-go-devops/internal/metrics/delivery/http"
 	metricsRendering "eridiumdev/yandex-praktikum-go-devops/internal/metrics/rendering"
 	metricsRepository "eridiumdev/yandex-praktikum-go-devops/internal/metrics/repository"

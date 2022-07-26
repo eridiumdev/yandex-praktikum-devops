@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
 )
 
 type HTMLTemplateParser struct {

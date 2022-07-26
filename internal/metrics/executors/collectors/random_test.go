@@ -18,8 +18,8 @@ func TestRandomCollect(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(snapshot))
-	assert.Equal(t, domain.RandomValue, snapshot[0].Name())
-	assert.Equal(t, domain.TypeGauge, snapshot[0].Type())
-	assert.GreaterOrEqual(t, snapshot[0].Value(), domain.Gauge(0))
-	assert.LessOrEqual(t, snapshot[0].Value(), domain.Gauge(99))
+	assert.Equal(t, domain.RandomValue, snapshot[0].Name)
+	assert.Equal(t, domain.TypeGauge, snapshot[0].Type)
+	assert.GreaterOrEqual(t, snapshot[0].Gauge, domain.Gauge(0))
+	assert.LessOrEqual(t, snapshot[0].Gauge, domain.Gauge(99))
 }

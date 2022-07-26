@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
 )
 
 type Server struct {

@@ -13,8 +13,7 @@ type MetricsRenderer interface {
 
 // MetricsService should be able to perform common operations on metrics, such as updating and retrieving
 type MetricsService interface {
-	UpdateCounter(name string, value domain.Counter) (domain.Metric, error)
-	UpdateGauge(name string, value domain.Gauge) (domain.Metric, error)
-	Get(name string) (domain.Metric, error)
-	List() ([]domain.Metric, error)
+	Update(metric domain.Metric) (updated domain.Metric, changed bool)
+	Get(name string) (metric domain.Metric, found bool)
+	List() []domain.Metric
 }

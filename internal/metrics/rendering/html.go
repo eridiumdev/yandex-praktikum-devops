@@ -1,7 +1,7 @@
 package rendering
 
 import (
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/templating"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/templating"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 
