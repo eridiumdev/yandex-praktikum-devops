@@ -7,6 +7,7 @@ import (
 	"syscall"
 	"time"
 
+	"eridiumdev/yandex-praktikum-go-devops/config"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/buffering"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/executors/collectors"
@@ -14,27 +15,14 @@ import (
 )
 
 const (
-	LogExporter  = 0x01
-	HTTPExporter = 0x02
-)
-
-const (
 	LogLevel = logger.LevelInfo
 	LogMode  = logger.ModeDevelopment
 
+	LogExporter  = 0x01
+	HTTPExporter = 0x02
+
 	// ExportersEnabled = LogExporter
 	ExportersEnabled = HTTPExporter
-
-	CollectInterval = 2 * time.Second
-	ExportInterval  = 10 * time.Second
-	ShutdownTimeout = 3 * time.Second
-
-	RandomValueMin = 0
-	RandomValueMax = 9999
-
-	HTTPExporterHost    = "127.0.0.1"
-	HTTPExporterPort    = 8080
-	HTTPExporterTimeout = 3 * time.Second
 )
 
 func main() {
@@ -45,16 +33,22 @@ func main() {
 	// Get context with cancel func for graceful shutdown
 	ctx, cancel := context.WithCancel(ctx)
 
+	// Init config
+	cfg, err := config.LoadAgentConfig(config.FromEnv)
+	if err != nil {
+		logger.New(ctx).Fatalf("Cannot load config: %s", err.Error())
+	}
+
 	// Init buffer for metrics
 	metricsBuffer := buffering.NewInMemBuffer()
 
 	// Init agent
-	agent := NewAgent(AgentSettings{CollectInterval: CollectInterval, ExportInterval: ExportInterval}, metricsBuffer)
+	agent := NewAgent(cfg, metricsBuffer)
 
 	// Init collectors
 	runtimeCollector := collectors.NewRuntimeCollector("runtime")
 	pollCountCollector := collectors.NewPollCountCollector("poll-count")
-	randomCollector, err := collectors.NewRandomCollector("random", RandomValueMin, RandomValueMax)
+	randomCollector, err := collectors.NewRandomCollector("random", cfg.RandomExporter)
 	if err != nil {
 		logger.New(ctx).Fatalf("Cannot start random collector: %s", err.Error())
 	}
@@ -72,18 +66,14 @@ func main() {
 	}
 	if exporterEnabled(HTTPExporter) {
 		// HTTPExporter is the main exporter for Yandex-Practicum tasks
-		httpExporter := exporters.NewHTTPExporter("http", exporters.HTTPExporterSettings{
-			Host:    HTTPExporterHost,
-			Port:    HTTPExporterPort,
-			Timeout: HTTPExporterTimeout,
-		})
+		httpExporter := exporters.NewHTTPExporter("http", cfg.HTTPExporter)
 		agent.AddExporter(httpExporter)
 	}
 
 	// Start agent
 	go agent.StartCollecting(ctx)
-	// Wait one CollectInterval before running first export
-	time.AfterFunc(CollectInterval, func() {
+	// Wait one collectInterval before running first export
+	time.AfterFunc(cfg.CollectInterval, func() {
 		agent.StartExporting(ctx)
 	})
 	logger.New(ctx).Infof("Agent started")
@@ -95,7 +85,7 @@ func main() {
 	logger.New(ctx).Infof("OS signal received: %s", sig)
 
 	// Allow some time for collectors/exporters to finish their job
-	time.AfterFunc(ShutdownTimeout, func() {
+	time.AfterFunc(cfg.ShutdownTimeout, func() {
 		logger.New(ctx).Fatalf("Agent force-stopped (shutdown timeout)")
 	})
 

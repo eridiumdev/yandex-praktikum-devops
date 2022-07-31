@@ -7,11 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"eridiumdev/yandex-praktikum-go-devops/config"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 
 func TestRandomCollect(t *testing.T) {
-	col, err := NewRandomCollector("random", 0, 99)
+	col, err := NewRandomCollector("random", config.RandomExporterConfig{Min: 0, Max: 99})
 	require.NoError(t, err)
 
 	snapshot, err := col.Collect(context.Background())

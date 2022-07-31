@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"time"
 
+	"eridiumdev/yandex-praktikum-go-devops/config"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/executor"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
@@ -22,19 +23,19 @@ var (
 	ErrMinOverMax     = errors.New("randomValueMin cannot be bigger than randomValueMax")
 )
 
-func NewRandomCollector(name string, randomValueMin, randomValueMax int) (*randomCollector, error) {
-	if randomValueMin < 0 || randomValueMax < 0 {
+func NewRandomCollector(name string, cfg config.RandomExporterConfig) (*randomCollector, error) {
+	if cfg.Min < 0 || cfg.Max < 0 {
 		return nil, ErrNegativeNumber
 	}
-	if randomValueMin > randomValueMax {
+	if cfg.Min > cfg.Max {
 		return nil, ErrMinOverMax
 	}
 
 	col := &randomCollector{
 		Executor:       executor.New(name),
 		generator:      rand.New(rand.NewSource(time.Now().UnixNano())),
-		randomValueMin: randomValueMin,
-		randomValueMax: randomValueMax,
+		randomValueMin: cfg.Min,
+		randomValueMax: cfg.Max,
 	}
 	col.ReadyUp()
 	return col, nil

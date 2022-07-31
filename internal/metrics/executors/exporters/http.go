@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/go-resty/resty/v2"
 
+	"eridiumdev/yandex-praktikum-go-devops/config"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/executor"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
@@ -16,24 +16,16 @@ import (
 
 type HTTPExporter struct {
 	*executor.Executor
-	host   string
-	port   int
-	client *resty.Client
+	address string
+	client  *resty.Client
 }
 
-type HTTPExporterSettings struct {
-	Host    string
-	Port    int
-	Timeout time.Duration
-}
-
-func NewHTTPExporter(name string, settings HTTPExporterSettings) *HTTPExporter {
+func NewHTTPExporter(name string, cfg config.HTTPExporterConfig) *HTTPExporter {
 	exp := &HTTPExporter{
 		Executor: executor.New(name),
-		host:     settings.Host,
-		port:     settings.Port,
+		address:  cfg.Address,
 		client: resty.New().
-			SetTimeout(settings.Timeout),
+			SetTimeout(cfg.Timeout),
 	}
 	exp.ReadyUp()
 	return exp
@@ -66,7 +58,7 @@ func (exp *HTTPExporter) prepareRequest(ctx context.Context, metric domain.Metri
 	}
 
 	req := exp.client.R().SetContext(ctx)
-	req.URL = fmt.Sprintf("http://%s:%d/update", exp.host, exp.port)
+	req.URL = fmt.Sprintf("http://%s/update", exp.address)
 	req.Method = http.MethodPost
 	req.SetBody(body)
 	req.SetHeader("Content-Type", "application/json")

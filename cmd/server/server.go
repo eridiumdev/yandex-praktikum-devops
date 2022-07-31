@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 
+	"eridiumdev/yandex-praktikum-go-devops/config"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
 )
 
@@ -13,15 +13,10 @@ type Server struct {
 	Server *http.Server
 }
 
-type ServerSettings struct {
-	Host string
-	Port int
-}
-
-func NewServer(handler http.Handler, settings ServerSettings) *Server {
+func NewServer(handler http.Handler, cfg *config.ServerConfig) *Server {
 	return &Server{
 		Server: &http.Server{
-			Addr:    fmt.Sprintf("%s:%d", settings.Host, settings.Port),
+			Addr:    cfg.Address,
 			Handler: handler,
 		},
 	}

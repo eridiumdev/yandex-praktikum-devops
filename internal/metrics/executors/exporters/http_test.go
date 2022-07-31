@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"eridiumdev/yandex-praktikum-go-devops/config"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 
@@ -46,7 +47,10 @@ func TestPrepareRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			exp := NewHTTPExporter("http", HTTPExporterSettings{Host: "localhost", Port: 80, Timeout: 5})
+			exp := NewHTTPExporter("http", config.HTTPExporterConfig{
+				Address: "localhost:80",
+				Timeout: 5,
+			})
 			req, err := exp.prepareRequest(context.Background(), tt.metric)
 			require.NoError(t, err)
 
