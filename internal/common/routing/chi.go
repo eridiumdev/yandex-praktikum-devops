@@ -2,6 +2,7 @@ package routing
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi"
 )
@@ -25,6 +26,9 @@ func (r *ChiRouter) GetHandler() http.Handler {
 }
 
 func (r *ChiRouter) AddRoute(method, endpoint string, handler http.HandlerFunc) {
+	if endpoint != "/" {
+		endpoint = strings.TrimRight(endpoint, "/")
+	}
 	r.Mux.Method(method, endpoint, handler)
 }
 

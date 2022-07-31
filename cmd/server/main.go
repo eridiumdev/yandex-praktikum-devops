@@ -44,7 +44,7 @@ func main() {
 	metricsRenderer := metricsRendering.NewHTMLEngine(templateParser)
 
 	// Init router
-	router := routing.NewChiRouter(logger.Middleware, middleware.Recoverer)
+	router := routing.NewChiRouter(logger.Middleware, routing.URLMiddleware, middleware.Recoverer)
 
 	// Init handlers
 	_ = metricsHttpDelivery.NewMetricsHandler(router, metricsService, metricsRenderer)
