@@ -2,6 +2,7 @@ package templating
 
 import (
 	"bytes"
+	"context"
 	"html/template"
 	"io/fs"
 	"os"
@@ -18,7 +19,7 @@ type HTMLTemplateParser struct {
 
 func NewHTMLTemplateParser(templatesDir string) *HTMLTemplateParser {
 	if _, err := os.Stat(templatesDir); os.IsNotExist(err) {
-		logger.Fatalf("[html template parser] directory '%s' does not exist", templatesDir)
+		logger.New(context.TODO()).Fatalf("[html template parser] directory '%s' does not exist", templatesDir)
 	}
 
 	var tpl *template.Template
@@ -29,7 +30,7 @@ func NewHTMLTemplateParser(templatesDir string) *HTMLTemplateParser {
 		return err
 	})
 	if err != nil {
-		logger.Fatalf("[html template parser] error when parsing templates: %s", err.Error())
+		logger.New(context.TODO()).Fatalf("[html template parser] error when parsing templates: %s", err.Error())
 	}
 
 	return &HTMLTemplateParser{

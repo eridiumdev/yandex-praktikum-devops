@@ -22,7 +22,7 @@ func (b *inMemBuffer) Buffer(mtx []domain.Metric) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	for _, metric := range mtx {
+	for i, metric := range mtx {
 		if _, ok := b.buffer[metric.Name]; ok {
 			switch metric.Type {
 			case domain.TypeCounter:
@@ -34,7 +34,7 @@ func (b *inMemBuffer) Buffer(mtx []domain.Metric) {
 			}
 		} else {
 			// Add metric to the buffer
-			b.buffer[metric.Name] = &metric
+			b.buffer[metric.Name] = &mtx[i]
 		}
 	}
 }

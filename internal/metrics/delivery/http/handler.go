@@ -42,16 +42,17 @@ func NewMetricsHandler(router routing.Router, service MetricsService, renderer M
 }
 
 func (h *MetricsHandler) Update(w http.ResponseWriter, r *http.Request) {
+	ctx := logger.ContextFromRequest(r)
 	var req domain.UpdateMetricRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		logger.Errorf("[metrics handler] received invalid JSON: %s", err.Error())
-		h.PlainText(w, http.StatusBadRequest, ErrStringInvalidJSON)
+		logger.New(ctx).Errorf("[metrics handler] received invalid JSON: %s", err.Error())
+		h.PlainText(ctx, w, http.StatusBadRequest, ErrStringInvalidJSON)
 		return
 	}
 
 	if !domain.IsValidMetricType(req.MType) {
-		logger.Errorf("[metrics handler] received invalid req type '%s'", req.MType)
-		h.PlainText(w, http.StatusNotImplemented, ErrStringInvalidMetricType)
+		logger.New(ctx).Errorf("[metrics handler] received invalid req type '%s'", req.MType)
+		h.PlainText(ctx, w, http.StatusNotImplemented, ErrStringInvalidMetricType)
 		return
 	}
 
@@ -65,36 +66,38 @@ func (h *MetricsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.Value != nil {
 		metric.Gauge = domain.Gauge(*req.Value)
 	}
-	h.service.Update(metric)
+	updatedMetric, _ := h.service.Update(metric)
 
-	h.JSON(w, http.StatusOK, domain.PrepareUpdateMetricResponse(metric))
+	h.JSON(ctx, w, http.StatusOK, domain.PrepareUpdateMetricResponse(updatedMetric))
 }
 
 func (h *MetricsHandler) Get(w http.ResponseWriter, r *http.Request) {
+	ctx := logger.ContextFromRequest(r)
 	var req domain.GetMetricRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		logger.Errorf("[metrics handler] received invalid JSON: %s", err.Error())
-		h.PlainText(w, http.StatusBadRequest, ErrStringInvalidJSON)
+		logger.New(ctx).Errorf("[metrics handler] received invalid JSON: %s", err.Error())
+		h.PlainText(ctx, w, http.StatusBadRequest, ErrStringInvalidJSON)
 		return
 	}
 
 	if !domain.IsValidMetricType(req.MType) {
-		logger.Errorf("[metrics handler] received invalid metric type '%s'", req.MType)
-		h.PlainText(w, http.StatusNotImplemented, ErrStringInvalidMetricType)
+		logger.New(ctx).Errorf("[metrics handler] received invalid metric type '%s'", req.MType)
+		h.PlainText(ctx, w, http.StatusNotImplemented, ErrStringInvalidMetricType)
 		return
 	}
 
 	metric, found := h.service.Get(req.ID)
 	if !found || metric.Type != req.MType {
-		logger.Errorf("[metrics handler] metric '%s/%s' not found", req.MType, req.ID)
-		h.PlainText(w, http.StatusNotFound, ErrStringMetricNotFound)
+		logger.New(ctx).Errorf("[metrics handler] metric '%s/%s' not found", req.MType, req.ID)
+		h.PlainText(ctx, w, http.StatusNotFound, ErrStringMetricNotFound)
 		return
 	}
 
-	h.JSON(w, http.StatusOK, domain.PrepareGetMetricResponse(metric))
+	h.JSON(ctx, w, http.StatusOK, domain.PrepareGetMetricResponse(metric))
 }
 
 func (h *MetricsHandler) List(w http.ResponseWriter, r *http.Request) {
+	ctx := logger.ContextFromRequest(r)
 	list := h.service.List()
 
 	// Sort metrics by name
@@ -104,10 +107,10 @@ func (h *MetricsHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	html, err := h.renderer.RenderList(list)
 	if err != nil {
-		logger.Errorf(fmt.Sprintf("[metrics handler] error when rendering html: %s", err.Error()))
-		h.PlainText(w, http.StatusInternalServerError, ErrStringRenderingError)
+		logger.New(ctx).Errorf(fmt.Sprintf("[metrics handler] error when rendering html: %s", err.Error()))
+		h.PlainText(ctx, w, http.StatusInternalServerError, ErrStringRenderingError)
 		return
 	}
 
-	h.HTML(w, html)
+	h.HTML(ctx, w, html)
 }

@@ -26,7 +26,7 @@ func (exp *LogExporter) Export(ctx context.Context, mtx []domain.Metric) error {
 	}()
 
 	for _, metric := range mtx {
-		logger.Infof("%s:%s (%s)", metric.Name, metric.StringValue(), metric.Type)
+		logger.New(ctx).Infof("%s:%s (%s)", metric.Name, metric.StringValue(), metric.Type)
 	}
 	return nil
 }

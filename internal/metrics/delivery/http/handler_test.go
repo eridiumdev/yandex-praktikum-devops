@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -59,7 +60,7 @@ type TestCase struct {
 }
 
 func init() {
-	logger.Init(logger.LevelCritical, logger.ModeDevelopment)
+	logger.Init(context.Background(), logger.LevelCritical, logger.ModeDevelopment)
 }
 
 func runTests(t *testing.T, tt TestCase) {
@@ -101,7 +102,7 @@ func TestUpdate(t *testing.T) {
 			body:   `{"id":"PollCount","type":"counter","delta":5}`,
 			want: Want{
 				code:        http.StatusOK,
-				response:    `{"id":"PollCount","type":"counter","delta":5}`,
+				response:    `{"id":"PollCount","type":"counter","delta":10}`,
 				contentType: "application/json; charset=utf-8",
 			},
 		},

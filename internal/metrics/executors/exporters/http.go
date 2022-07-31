@@ -50,7 +50,7 @@ func (exp *HTTPExporter) Export(ctx context.Context, mtx []domain.Metric) error 
 			return err
 		}
 		resp, err := req.Send()
-		logger.Infof("[http exporter] exported %s, status: %s", metric.Name, resp.Status())
+		logger.New(ctx).Infof("[http exporter] exported %s, status: %s", metric.Name, resp.Status())
 		if err != nil {
 			return err
 		}

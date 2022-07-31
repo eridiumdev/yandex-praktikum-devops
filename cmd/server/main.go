@@ -29,12 +29,9 @@ const (
 )
 
 func main() {
-	// Init context
-	ctx := context.Background()
-
-	// Init logger
-	logger.Init(LogLevel, LogMode)
-	logger.Infof("Logger started")
+	// Init logger and context
+	ctx := logger.Init(context.Background(), LogLevel, LogMode)
+	logger.New(ctx).Infof("Logger started")
 
 	// Init repos
 	metricsRepo := metricsRepository.NewInMemRepo()
@@ -59,21 +56,21 @@ func main() {
 	})
 
 	// Start server
-	logger.Infof("Starting HTTP server on %s:%d", HTTPHost, HTTPPort)
-	go server.Start()
+	logger.New(ctx).Infof("Starting HTTP server on %s:%d", HTTPHost, HTTPPort)
+	go server.Start(ctx)
 
 	// Handle OS signals for graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-quit
-	logger.Infof("OS signal received: %s", sig)
+	logger.New(ctx).Infof("OS signal received: %s", sig)
 
 	// Allow some time for collectors/exporters to finish their job
 	time.AfterFunc(ShutdownTimeout, func() {
-		logger.Fatalf("Server force-stopped (shutdown timeout)")
+		logger.New(ctx).Fatalf("Server force-stopped (shutdown timeout)")
 	})
 
 	// Stop the server
 	server.Stop(ctx)
-	logger.Infof("Server stopped")
+	logger.New(ctx).Infof("Server stopped")
 }

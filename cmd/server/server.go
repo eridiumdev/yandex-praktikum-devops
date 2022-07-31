@@ -27,17 +27,17 @@ func NewServer(handler http.Handler, settings ServerSettings) *Server {
 	}
 }
 
-func (s *Server) Start() {
+func (s *Server) Start(ctx context.Context) {
 	err := s.Server.ListenAndServe()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		// ErrServerClosed is normal-case scenario (i.e. graceful server stop)
-		logger.Fatalf("Failed to start HTTP server: %s", err.Error())
+		logger.New(ctx).Fatalf("Failed to start HTTP server: %s", err.Error())
 	}
 }
 
 func (s *Server) Stop(ctx context.Context) {
 	err := s.Server.Shutdown(ctx)
 	if err != nil {
-		logger.Errorf("Error when stopping HTTP server: %s", err.Error())
+		logger.New(ctx).Errorf("Error when stopping HTTP server: %s", err.Error())
 	}
 }
