@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/caarlos0/env/v6"
@@ -20,7 +21,8 @@ type DurationSec time.Duration
 
 // UnmarshalText treats provided text as amount of seconds for DurationSec
 func (d *DurationSec) UnmarshalText(text []byte) error {
-	duration, err := time.ParseDuration(fmt.Sprintf("%ss", string(text)))
+	// Normalize string to "<x>s" format. Trim extra 's' if already in this format
+	duration, err := time.ParseDuration(fmt.Sprintf("%ss", strings.TrimRight(string(text), "s")))
 	if err != nil {
 		return err
 	}
