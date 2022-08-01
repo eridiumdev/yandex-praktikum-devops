@@ -2,6 +2,8 @@ package config
 
 import (
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/caarlos0/env/v6"
 )
@@ -11,6 +13,20 @@ import (
 const (
 	FromEnv = iota
 )
+
+// DurationSec is a custom representation for time.Duration
+// custom type allows for more flexible unmarshalling, see UnmarshalText()
+type DurationSec time.Duration
+
+// UnmarshalText treats provided text as amount of seconds for DurationSec
+func (d *DurationSec) UnmarshalText(text []byte) error {
+	duration, err := time.ParseDuration(fmt.Sprintf("%ss", string(text)))
+	if err != nil {
+		return err
+	}
+	*d = DurationSec(duration)
+	return nil
+}
 
 func loadConfig(cfg interface{}, source int) error {
 	switch source {

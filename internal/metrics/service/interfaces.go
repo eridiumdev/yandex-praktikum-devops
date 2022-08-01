@@ -12,3 +12,9 @@ type MetricsRepository interface {
 	Get(name string) (metric domain.Metric, found bool)
 	List() []domain.Metric
 }
+
+// MetricsBackuper should be able to backup and restore metrics using long-term storage
+type MetricsBackuper interface {
+	Backup(metrics []domain.Metric) error
+	Restore() ([]domain.Metric, error)
+}

@@ -13,8 +13,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"eridiumdev/yandex-praktikum-go-devops/config"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/routing"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/backup"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/repository"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/service"
@@ -45,6 +47,10 @@ func getDummyRepo() service.MetricsRepository {
 	return r
 }
 
+func getDummyBackuper() service.MetricsBackuper {
+	return &backup.Mock{}
+}
+
 type Want struct {
 	code        int
 	response    string
@@ -64,10 +70,18 @@ func init() {
 }
 
 func runTests(t *testing.T, tt TestCase) {
-	r := routing.NewChiRouter()
-	svc := service.NewMetricsService(getDummyRepo())
-	NewMetricsHandler(r, svc, getDummyRenderer())
-	s := httptest.NewServer(r.Mux)
+	ctx := context.Background()
+	router := routing.NewChiRouter()
+	repo := getDummyRepo()
+	backuper := getDummyBackuper()
+
+	svc, _ := service.NewMetricsService(ctx, repo, backuper, config.BackupConfig{
+		Interval:  0,
+		DoRestore: false,
+	})
+
+	NewMetricsHandler(router, svc, getDummyRenderer())
+	s := httptest.NewServer(router.Mux)
 	defer s.Close()
 
 	buffer := bytes.Buffer{}

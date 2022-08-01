@@ -1,13 +1,9 @@
 package config
 
-import (
-	"time"
-)
-
 type AgentConfig struct {
-	CollectInterval time.Duration `env:"POLL_INTERVAL" envDefault:"2s"`
-	ExportInterval  time.Duration `env:"REPORT_INTERVAL" envDefault:"10s"`
-	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT" envDefault:"3s"`
+	CollectInterval DurationSec `env:"POLL_INTERVAL" envDefault:"2"`
+	ExportInterval  DurationSec `env:"REPORT_INTERVAL" envDefault:"10"`
+	ShutdownTimeout DurationSec `env:"SHUTDOWN_TIMEOUT" envDefault:"3"`
 
 	RandomExporter RandomExporterConfig `envPrefix:"RANDOM_EXPORTER_"`
 	HTTPExporter   HTTPExporterConfig
@@ -19,8 +15,8 @@ type RandomExporterConfig struct {
 }
 
 type HTTPExporterConfig struct {
-	Address string        `env:"ADDRESS" envDefault:"localhost:8080"`
-	Timeout time.Duration `env:"TIMEOUT" envDefault:"3s"`
+	Address string      `env:"ADDRESS" envDefault:"localhost:8080"`
+	Timeout DurationSec `env:"TIMEOUT" envDefault:"3"`
 }
 
 func LoadAgentConfig(source int) (*AgentConfig, error) {

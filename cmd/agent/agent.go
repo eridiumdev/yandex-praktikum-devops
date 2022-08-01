@@ -20,8 +20,8 @@ type Agent struct {
 
 func NewAgent(cfg *config.AgentConfig, bufferer MetricsBufferer) *Agent {
 	return &Agent{
-		collectInterval: cfg.CollectInterval,
-		exportInterval:  cfg.ExportInterval,
+		collectInterval: time.Duration(cfg.CollectInterval),
+		exportInterval:  time.Duration(cfg.ExportInterval),
 		collectors:      []MetricsCollector{},
 		exporters:       []MetricsExporter{},
 		bufferer:        bufferer,

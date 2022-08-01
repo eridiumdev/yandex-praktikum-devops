@@ -73,7 +73,7 @@ func main() {
 	// Start agent
 	go agent.StartCollecting(ctx)
 	// Wait one collectInterval before running first export
-	time.AfterFunc(cfg.CollectInterval, func() {
+	time.AfterFunc(time.Duration(cfg.CollectInterval), func() {
 		agent.StartExporting(ctx)
 	})
 	logger.New(ctx).Infof("Agent started")
@@ -85,7 +85,7 @@ func main() {
 	logger.New(ctx).Infof("OS signal received: %s", sig)
 
 	// Allow some time for collectors/exporters to finish their job
-	time.AfterFunc(cfg.ShutdownTimeout, func() {
+	time.AfterFunc(time.Duration(cfg.ShutdownTimeout), func() {
 		logger.New(ctx).Fatalf("Agent force-stopped (shutdown timeout)")
 	})
 

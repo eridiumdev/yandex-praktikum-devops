@@ -1,13 +1,28 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"eridiumdev/yandex-praktikum-go-devops/config"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/backup"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/repository"
 )
+
+func getDummyRepo() MetricsRepository {
+	repo := repository.NewInMemRepo()
+	repo.Store(domain.NewCounter(domain.PollCount, 10))
+	repo.Store(domain.NewGauge(domain.Alloc, 10.333))
+	return repo
+}
+
+func getDummyBackuper() MetricsBackuper {
+	return &backup.Mock{}
+}
 
 func TestUpdate(t *testing.T) {
 	tests := []struct {
@@ -50,22 +65,21 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			repo := repository.NewInMemRepo()
+			backuper := getDummyBackuper()
+
+			service, err := NewMetricsService(ctx, repo, backuper, config.BackupConfig{})
+			require.NoError(t, err)
+
 			var result domain.Metric
-			s := NewMetricsService(repository.NewInMemRepo())
 
 			for _, update := range tt.updates {
-				result, _ = s.Update(update)
+				result, _ = service.Update(update)
 			}
 			assert.Equal(t, tt.want, result)
 		})
 	}
-}
-
-func getDummyRepo() MetricsRepository {
-	repo := repository.NewInMemRepo()
-	repo.Store(domain.NewCounter(domain.PollCount, 10))
-	repo.Store(domain.NewGauge(domain.Alloc, 10.333))
-	return repo
 }
 
 func TestGet(t *testing.T) {
@@ -74,24 +88,21 @@ func TestGet(t *testing.T) {
 		found  bool
 	}
 	tests := []struct {
-		name    string
-		service *metricsService
-		mName   string
-		want    Want
+		name  string
+		mName string
+		want  Want
 	}{
 		{
-			name:    "get metric (found)",
-			service: NewMetricsService(getDummyRepo()),
-			mName:   domain.PollCount,
+			name:  "get metric (found)",
+			mName: domain.PollCount,
 			want: Want{
 				metric: domain.NewCounter(domain.PollCount, 10),
 				found:  true,
 			},
 		},
 		{
-			name:    "get metric (not found)",
-			service: NewMetricsService(getDummyRepo()),
-			mName:   domain.RandomValue,
+			name:  "get metric (not found)",
+			mName: domain.RandomValue,
 			want: Want{
 				metric: domain.Metric{},
 				found:  false,
@@ -100,7 +111,14 @@ func TestGet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			metric, found := tt.service.Get(tt.mName)
+			ctx := context.Background()
+			repo := getDummyRepo()
+			backuper := getDummyBackuper()
+
+			service, err := NewMetricsService(ctx, repo, backuper, config.BackupConfig{})
+			require.NoError(t, err)
+
+			metric, found := service.Get(tt.mName)
 			assert.Equal(t, tt.want.metric, metric)
 			assert.Equal(t, tt.want.found, found)
 		})
@@ -109,18 +127,18 @@ func TestGet(t *testing.T) {
 
 func TestList(t *testing.T) {
 	tests := []struct {
-		name    string
-		service *metricsService
-		want    []domain.Metric
+		name string
+		repo MetricsRepository
+		want []domain.Metric
 	}{
 		{
-			name:    "list metrics from service with empty repo",
-			service: NewMetricsService(repository.NewInMemRepo()),
-			want:    []domain.Metric{},
+			name: "list metrics from service with empty repo",
+			repo: repository.NewInMemRepo(),
+			want: []domain.Metric{},
 		},
 		{
-			name:    "list metrics from service with non-empty repo",
-			service: NewMetricsService(getDummyRepo()),
+			name: "list metrics from service with non-empty repo",
+			repo: getDummyRepo(),
 			want: []domain.Metric{
 				domain.NewCounter(domain.PollCount, 10),
 				domain.NewGauge(domain.Alloc, 10.333),
@@ -129,7 +147,13 @@ func TestList(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			list := tt.service.List()
+			ctx := context.Background()
+			backuper := getDummyBackuper()
+
+			service, err := NewMetricsService(ctx, tt.repo, backuper, config.BackupConfig{})
+			require.NoError(t, err)
+
+			list := service.List()
 			assert.ElementsMatch(t, tt.want, list)
 		})
 	}

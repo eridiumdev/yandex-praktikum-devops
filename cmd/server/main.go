@@ -13,6 +13,7 @@ import (
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/routing"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/templating"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/backup"
 	metricsHttpDelivery "eridiumdev/yandex-praktikum-go-devops/internal/metrics/delivery/http"
 	metricsRendering "eridiumdev/yandex-praktikum-go-devops/internal/metrics/rendering"
 	metricsRepository "eridiumdev/yandex-praktikum-go-devops/internal/metrics/repository"
@@ -20,7 +21,7 @@ import (
 )
 
 const (
-	LogLevel = logger.LevelInfo
+	LogLevel = logger.LevelDebug
 	LogMode  = logger.ModeDevelopment
 )
 
@@ -29,6 +30,9 @@ func main() {
 	ctx := logger.Init(context.Background(), LogLevel, LogMode)
 	logger.New(ctx).Infof("Logger started")
 
+	// Get context with cancel func for graceful shutdown
+	ctx, cancel := context.WithCancel(ctx)
+
 	// Init config
 	cfg, err := config.LoadServerConfig(config.FromEnv)
 	if err != nil {
@@ -36,10 +40,19 @@ func main() {
 	}
 
 	// Init repos
-	metricsRepo := metricsRepository.NewInMemRepo()
+	inMemRepo := metricsRepository.NewInMemRepo()
+
+	// Init backupers
+	fileBackuper, err := backup.NewFileBackuper(ctx, cfg.BackuperFilePath)
+	if err != nil {
+		logger.New(ctx).Fatalf("Cannot init file backuper: %s", err.Error())
+	}
 
 	// Init services
-	metricsService := _metricsService.NewMetricsService(metricsRepo)
+	metricsService, err := _metricsService.NewMetricsService(ctx, inMemRepo, fileBackuper, cfg.Backup)
+	if err != nil {
+		logger.New(ctx).Fatalf("Cannot init metrics service: %s", err.Error())
+	}
 
 	// Init rendering engines
 	templateParser := templating.NewHTMLTemplateParser("web/templates")
@@ -64,12 +77,22 @@ func main() {
 	sig := <-quit
 	logger.New(ctx).Infof("OS signal received: %s", sig)
 
-	// Allow some time for collectors/exporters to finish their job
-	time.AfterFunc(cfg.ShutdownTimeout, func() {
+	// Allow some time for server and components to clean up
+	time.AfterFunc(time.Duration(cfg.ShutdownTimeout), func() {
+		cleanup(cancel, time.Second)
 		logger.New(ctx).Fatalf("Server force-stopped (shutdown timeout)")
 	})
 
 	// Stop the server
 	server.Stop(ctx)
 	logger.New(ctx).Infof("Server stopped")
+
+	// Clean-up other components, e.g. backuper
+	cleanup(cancel, time.Second)
+}
+
+func cleanup(cancel context.CancelFunc, wait time.Duration) {
+	cancel()
+	time.Sleep(wait)
+	logger.New(context.Background()).Infof("Clean-up finished")
 }
