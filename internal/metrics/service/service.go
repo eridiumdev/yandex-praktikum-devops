@@ -34,9 +34,6 @@ func NewMetricsService(
 	}
 	backupInterval := time.Duration(backupCfg.Interval)
 	if backupInterval > 0 {
-		if backupInterval < 5*time.Second {
-			return nil, errors.New("backup interval is too small (minimum 5 seconds)")
-		}
 		go s.startDoingBackups(ctx, backupInterval)
 	}
 	return s, nil
