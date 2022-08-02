@@ -66,7 +66,10 @@ type TestCase struct {
 }
 
 func init() {
-	logger.Init(context.Background(), logger.LevelCritical, logger.ModeDevelopment)
+	logger.Init(context.Background(), config.LoggerConfig{
+		Level: logger.LevelCritical,
+		Mode:  logger.ModeDevelopment,
+	})
 }
 
 func runTests(t *testing.T, tt TestCase) {

@@ -68,7 +68,8 @@ func (s *metricsService) startDoingBackups(ctx context.Context, interval time.Du
 			logger.New(ctx).Debugf("[metrics service] backup cycle %d begins", backupCycles)
 			metrics := s.repo.List()
 			if err := s.backuper.Backup(metrics); err == nil {
-				logger.New(ctx).Debugf("[metrics service] backup cycle %d successful, metrics count = %d", backupCycles, len(metrics))
+				logger.New(ctx).Debugf("[metrics service] backup cycle %d successful, metrics count = %d",
+					backupCycles, len(metrics))
 			}
 		case <-ctx.Done():
 			logger.New(ctx).Debugf("[metrics service] context cancelled, stopped doing backups")
