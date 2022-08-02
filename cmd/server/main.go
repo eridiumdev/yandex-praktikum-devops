@@ -8,10 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-chi/chi/middleware"
-
 	"eridiumdev/yandex-praktikum-go-devops/config"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/middleware"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/routing"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/templating"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/backup"
@@ -58,7 +57,7 @@ func main() {
 	metricsRenderer := metricsRendering.NewHTMLEngine(templateParser)
 
 	// Init router
-	router := routing.NewChiRouter(logger.Middleware, routing.URLMiddleware, middleware.Recoverer)
+	router := routing.NewChiRouter(middleware.URLTrimmer)
 
 	// Init handlers
 	_ = metricsHttpDelivery.NewMetricsHandler(router, metricsService, metricsRenderer)

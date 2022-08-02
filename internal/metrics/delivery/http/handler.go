@@ -9,6 +9,7 @@ import (
 
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/handlers"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/middleware"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/routing"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
@@ -34,9 +35,9 @@ func NewMetricsHandler(router routing.Router, service MetricsService, renderer M
 		service:  service,
 		renderer: renderer,
 	}
-	router.AddRoute(http.MethodGet, "/", h.List)
-	router.AddRoute(http.MethodPost, "/value", h.Get)
-	router.AddRoute(http.MethodPost, "/update", h.Update)
+	router.AddRoute(http.MethodGet, "/", h.List, middleware.BasicSet...)
+	router.AddRoute(http.MethodPost, "/value", h.Get, middleware.ExtendedSet...)
+	router.AddRoute(http.MethodPost, "/update", h.Update, middleware.ExtendedSet...)
 
 	return h
 }
