@@ -32,7 +32,7 @@ func NewMetricsService(
 			return nil, errors.Wrap(err, "failed to restore from backup")
 		}
 	}
-	backupInterval := time.Duration(backupCfg.Interval)
+	backupInterval := backupCfg.Interval
 	if backupInterval > 0 {
 		go s.startDoingBackups(ctx, backupInterval)
 	}

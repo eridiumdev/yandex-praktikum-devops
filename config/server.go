@@ -1,18 +1,42 @@
 package config
 
+import (
+	"flag"
+	"time"
+
+	"github.com/caarlos0/env/v6"
+)
+
 type ServerConfig struct {
-	Address          string      `env:"ADDRESS" envDefault:"localhost:8080"`
-	BackuperFilePath string      `env:"STORE_FILE" envDefault:"/tmp/devops-metrics-db.json"`
-	ShutdownTimeout  DurationSec `env:"SHUTDOWN_TIMEOUT" envDefault:"3"`
+	Logger           LoggerConfig
+	Address          string        `env:"ADDRESS"`
+	FileBackuperPath string        `env:"STORE_FILE"`
+	ShutdownTimeout  time.Duration `env:"SHUTDOWN_TIMEOUT" envDefault:"3s"`
 	Backup           BackupConfig
 }
 
 type BackupConfig struct {
-	Interval  DurationSec `env:"STORE_INTERVAL" envDefault:"300"`
-	DoRestore bool        `env:"RESTORE" envDefault:"true"`
+	Interval  time.Duration `env:"STORE_INTERVAL"`
+	DoRestore bool          `env:"RESTORE"`
 }
 
-func LoadServerConfig(source int) (*ServerConfig, error) {
+func LoadServerConfig() (*ServerConfig, error) {
 	cfg := &ServerConfig{}
-	return cfg, loadConfig(cfg, source)
+
+	// Parse flag-settable fields
+	flag.StringVar(&cfg.Address, "a", "localhost:8080", "HTTP server address")
+	flag.StringVar(&cfg.FileBackuperPath, "f", "/tmp/devops-metrics-db.json", "backup file path")
+	flag.BoolVar(&cfg.Backup.DoRestore, "r", true, "restore from backup file on server start")
+	flag.DurationVar(&cfg.Backup.Interval, "i", 300*time.Second, "backup/store interval")
+
+	parseLoggerConfigFlags(&cfg.Logger)
+
+	flag.Parse()
+
+	// Parse env-settable fields, override if already set
+	err := env.Parse(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return cfg, err
 }

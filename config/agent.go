@@ -1,9 +1,18 @@
 package config
 
+import (
+	"flag"
+	"time"
+
+	"github.com/caarlos0/env/v6"
+)
+
 type AgentConfig struct {
-	CollectInterval DurationSec `env:"POLL_INTERVAL" envDefault:"2"`
-	ExportInterval  DurationSec `env:"REPORT_INTERVAL" envDefault:"10"`
-	ShutdownTimeout DurationSec `env:"SHUTDOWN_TIMEOUT" envDefault:"3"`
+	Logger LoggerConfig
+
+	CollectInterval time.Duration `env:"POLL_INTERVAL"`
+	ExportInterval  time.Duration `env:"REPORT_INTERVAL"`
+	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT" envDefault:"3s"`
 
 	RandomExporter RandomExporterConfig `envPrefix:"RANDOM_EXPORTER_"`
 	HTTPExporter   HTTPExporterConfig
@@ -15,11 +24,26 @@ type RandomExporterConfig struct {
 }
 
 type HTTPExporterConfig struct {
-	Address string      `env:"ADDRESS" envDefault:"localhost:8080"`
-	Timeout DurationSec `env:"TIMEOUT" envDefault:"3"`
+	Address string        `env:"ADDRESS"`
+	Timeout time.Duration `env:"TIMEOUT" envDefault:"3s"`
 }
 
-func LoadAgentConfig(source int) (*AgentConfig, error) {
+func LoadAgentConfig() (*AgentConfig, error) {
 	cfg := &AgentConfig{}
-	return cfg, loadConfig(cfg, source)
+
+	// Parse flag-settable fields
+	flag.DurationVar(&cfg.CollectInterval, "p", 2*time.Second, "metrics collect/poll interval")
+	flag.DurationVar(&cfg.ExportInterval, "r", 10*time.Second, "metrics export/report interval")
+	flag.StringVar(&cfg.HTTPExporter.Address, "a", "localhost:8080", "HTTP exporter target address")
+
+	parseLoggerConfigFlags(&cfg.Logger)
+
+	flag.Parse()
+
+	// Parse env-settable fields, override if already set
+	err := env.Parse(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return cfg, err
 }

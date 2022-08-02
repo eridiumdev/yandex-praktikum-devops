@@ -13,18 +13,20 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
+
+	"eridiumdev/yandex-praktikum-go-devops/config"
 )
 
 const (
-	LevelCritical = iota
-	LevelError
-	LevelInfo
-	LevelDebug
+	LevelCritical = "crit"
+	LevelError    = "error"
+	LevelInfo     = "info"
+	LevelDebug    = "warn"
 )
 
 const (
-	ModeDevelopment = iota
-	ModeProduction
+	ModeDevelopment = "dev"
+	ModeProduction  = "prod"
 )
 
 type message struct {
@@ -32,10 +34,10 @@ type message struct {
 	fields map[string]interface{}
 }
 
-func Init(ctx context.Context, level uint8, mode uint8) context.Context {
-	zerolog.SetGlobalLevel(convertToZerologLevel(level))
+func Init(ctx context.Context, cfg config.LoggerConfig) context.Context {
+	zerolog.SetGlobalLevel(convertToZerologLevel(cfg.Level))
 
-	switch mode {
+	switch cfg.Mode {
 	case ModeProduction:
 		log.Logger = log.Output(os.Stdout)
 	case ModeDevelopment:
@@ -136,7 +138,7 @@ func (m *message) Debugf(format string, v ...interface{}) {
 	log.Ctx(m.ctx).Debug().Fields(m.fields).Msgf(format, v...)
 }
 
-func convertToZerologLevel(level uint8) zerolog.Level {
+func convertToZerologLevel(level string) zerolog.Level {
 	switch level {
 	case LevelCritical:
 		return zerolog.FatalLevel

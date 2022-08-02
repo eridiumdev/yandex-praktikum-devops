@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,30 +15,22 @@ import (
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/executors/exporters"
 )
 
-const (
-	LogLevel = logger.LevelInfo
-	LogMode  = logger.ModeDevelopment
-
-	LogExporter  = 0x01
-	HTTPExporter = 0x02
-
-	// ExportersEnabled = LogExporter
-	ExportersEnabled = HTTPExporter
-)
-
 func main() {
-	// Init logger
-	ctx := logger.Init(context.Background(), LogLevel, LogMode)
-	logger.New(ctx).Infof("Logger started")
-
-	// Get context with cancel func for graceful shutdown
-	ctx, cancel := context.WithCancel(ctx)
+	// Init context
+	ctx := context.Background()
 
 	// Init config
-	cfg, err := config.LoadAgentConfig(config.FromEnv)
+	cfg, err := config.LoadAgentConfig()
 	if err != nil {
-		logger.New(ctx).Fatalf("Cannot load config: %s", err.Error())
+		log.Fatalf("Cannot load config: %s", err.Error())
 	}
+
+	// Init logger and update context
+	ctx = logger.Init(context.Background(), cfg.Logger)
+	logger.New(ctx).Infof("Logger started")
+
+	// Modify context with cancel func for graceful shutdown
+	ctx, cancel := context.WithCancel(ctx)
 
 	// Init buffer for metrics
 	metricsBuffer := buffering.NewInMemBuffer()
@@ -59,21 +52,13 @@ func main() {
 	agent.AddCollector(randomCollector)
 
 	// Init exporters
-	if exporterEnabled(LogExporter) {
-		// LogExporter is used for debug purposes
-		logExporter := exporters.NewLogExporter("log")
-		agent.AddExporter(logExporter)
-	}
-	if exporterEnabled(HTTPExporter) {
-		// HTTPExporter is the main exporter for Yandex-Practicum tasks
-		httpExporter := exporters.NewHTTPExporter("http", cfg.HTTPExporter)
-		agent.AddExporter(httpExporter)
-	}
+	httpExporter := exporters.NewHTTPExporter("http", cfg.HTTPExporter)
+	agent.AddExporter(httpExporter)
 
 	// Start agent
 	go agent.StartCollecting(ctx)
 	// Wait one collectInterval before running first export
-	time.AfterFunc(time.Duration(cfg.CollectInterval), func() {
+	time.AfterFunc(cfg.CollectInterval, func() {
 		agent.StartExporting(ctx)
 	})
 	logger.New(ctx).Infof("Agent started")
@@ -85,7 +70,7 @@ func main() {
 	logger.New(ctx).Infof("OS signal received: %s", sig)
 
 	// Allow some time for collectors/exporters to finish their job
-	time.AfterFunc(time.Duration(cfg.ShutdownTimeout), func() {
+	time.AfterFunc(cfg.ShutdownTimeout, func() {
 		logger.New(ctx).Fatalf("Agent force-stopped (shutdown timeout)")
 	})
 
@@ -93,8 +78,4 @@ func main() {
 	cancel()
 	agent.Stop()
 	logger.New(ctx).Infof("Agent stopped")
-}
-
-func exporterEnabled(exporter int) bool {
-	return ExportersEnabled&exporter == exporter
 }

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/go-resty/resty/v2"
 
@@ -26,7 +25,7 @@ func NewHTTPExporter(name string, cfg config.HTTPExporterConfig) *HTTPExporter {
 		Executor: executor.New(name),
 		address:  cfg.Address,
 		client: resty.New().
-			SetTimeout(time.Duration(cfg.Timeout)),
+			SetTimeout(cfg.Timeout),
 	}
 	exp.ReadyUp()
 	return exp

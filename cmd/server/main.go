@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,30 +21,28 @@ import (
 	_metricsService "eridiumdev/yandex-praktikum-go-devops/internal/metrics/service"
 )
 
-const (
-	LogLevel = logger.LevelDebug
-	LogMode  = logger.ModeDevelopment
-)
-
 func main() {
-	// Init logger and context
-	ctx := logger.Init(context.Background(), LogLevel, LogMode)
-	logger.New(ctx).Infof("Logger started")
-
-	// Get context with cancel func for graceful shutdown
-	ctx, cancel := context.WithCancel(ctx)
+	// Init context
+	ctx := context.Background()
 
 	// Init config
-	cfg, err := config.LoadServerConfig(config.FromEnv)
+	cfg, err := config.LoadServerConfig()
 	if err != nil {
-		logger.New(ctx).Fatalf("Cannot load config: %s", err.Error())
+		log.Fatalf("Cannot load config: %s", err.Error())
 	}
+
+	// Init logger and update context
+	ctx = logger.Init(context.Background(), cfg.Logger)
+	logger.New(ctx).Infof("Logger started")
+
+	// Modify context with cancel func for graceful shutdown
+	ctx, cancel := context.WithCancel(ctx)
 
 	// Init repos
 	inMemRepo := metricsRepository.NewInMemRepo()
 
 	// Init backupers
-	fileBackuper, err := backup.NewFileBackuper(ctx, cfg.BackuperFilePath)
+	fileBackuper, err := backup.NewFileBackuper(ctx, cfg.FileBackuperPath)
 	if err != nil {
 		logger.New(ctx).Fatalf("Cannot init file backuper: %s", err.Error())
 	}
@@ -78,7 +77,7 @@ func main() {
 	logger.New(ctx).Infof("OS signal received: %s", sig)
 
 	// Allow some time for server and components to clean up
-	time.AfterFunc(time.Duration(cfg.ShutdownTimeout), func() {
+	time.AfterFunc(cfg.ShutdownTimeout, func() {
 		cleanup(cancel, time.Second)
 		logger.New(ctx).Fatalf("Server force-stopped (shutdown timeout)")
 	})
