@@ -30,6 +30,7 @@ func LogRequests(next http.Handler) http.Handler {
 			Field("method", r.Method).
 			Field("url", r.URL.String()).
 			Field("content_type", r.Header.Get("Content-Type")).
+			Field("content_encoding", r.Header.Get("Content-Encoding")).
 			Infof("--> HTTP request")
 		next.ServeHTTP(w, r)
 	})
@@ -64,6 +65,7 @@ func LogRequestsWithBody(next http.Handler) http.Handler {
 			Field("method", r.Method).
 			Field("url", r.URL.String()).
 			Field("content_type", r.Header.Get("Content-Type")).
+			Field("content_encoding", r.Header.Get("Content-Encoding")).
 			Field("body", string(body)).
 			Infof("--> HTTP request")
 		next.ServeHTTP(w, r)

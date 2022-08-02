@@ -6,21 +6,23 @@ import (
 
 // BasicSet logs requests and responses main data (method, status, etc.)
 // as well as adds requestId to context
+// and compresses responses / decompresses requests if needed
 var BasicSet = []func(next http.Handler) http.Handler{
 	BaseLoggingMiddleware,
 	AddRequestID,
 	LogRequests,
 	LogResponses,
+	CompressResponses,
+	DecompressRequests,
 }
 
 // ExtendedSet does the same as BasicSet
 // but also logs request bodies and response bodies
-// as well as adds support for compressing responses and decompressing requests
 var ExtendedSet = []func(next http.Handler) http.Handler{
 	BaseLoggingMiddleware,
 	AddRequestID,
-	// LogRequestsWithBody,
-	CompressResponses, // should be before LogResponsesWithBody (for human-readable logs)
+	LogRequestsWithBody,
+	CompressResponses,
 	LogResponsesWithBody,
-	DecompressRequests, // should be after LogResponsesWithBody
+	DecompressRequests,
 }
