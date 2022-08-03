@@ -4,26 +4,22 @@ import (
 	"context"
 	"runtime"
 
-	"eridiumdev/yandex-praktikum-go-devops/internal/common/executor"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/worker"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 
 type runtimeCollector struct {
-	*executor.Executor
+	*worker.Worker
 }
 
 func NewRuntimeCollector(name string) *runtimeCollector {
 	col := &runtimeCollector{
-		Executor: executor.New(name),
+		Worker: worker.New(name, 1),
 	}
-	col.ReadyUp()
 	return col
 }
 
 func (col *runtimeCollector) Collect(ctx context.Context) ([]domain.Metric, error) {
-	defer func() {
-		col.ReadyUp()
-	}()
 	return col.getRuntimeSnapshot(), nil
 }
 

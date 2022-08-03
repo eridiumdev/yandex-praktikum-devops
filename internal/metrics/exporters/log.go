@@ -3,28 +3,23 @@ package exporters
 import (
 	"context"
 
-	"eridiumdev/yandex-praktikum-go-devops/internal/common/executor"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/worker"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 
 type LogExporter struct {
-	*executor.Executor
+	*worker.Worker
 }
 
 func NewLogExporter(name string) *LogExporter {
 	exp := &LogExporter{
-		Executor: executor.New(name),
+		Worker: worker.New(name, 1),
 	}
-	exp.ReadyUp()
 	return exp
 }
 
 func (exp *LogExporter) Export(ctx context.Context, mtx []domain.Metric) error {
-	defer func() {
-		exp.ReadyUp()
-	}()
-
 	for _, metric := range mtx {
 		logger.New(ctx).Infof("%s:%s (%s)", metric.Name, metric.StringValue(), metric.Type)
 	}

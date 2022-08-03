@@ -3,27 +3,22 @@ package collectors
 import (
 	"context"
 
-	"eridiumdev/yandex-praktikum-go-devops/internal/common/executor"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/worker"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 
 type pollCountCollector struct {
-	*executor.Executor
+	*worker.Worker
 }
 
 func NewPollCountCollector(name string) *pollCountCollector {
 	col := &pollCountCollector{
-		Executor: executor.New(name),
+		Worker: worker.New(name, 1),
 	}
-	col.ReadyUp()
 	return col
 }
 
 func (col *pollCountCollector) Collect(ctx context.Context) ([]domain.Metric, error) {
-	defer func() {
-		col.ReadyUp()
-	}()
-
 	return []domain.Metric{
 		domain.NewCounter(domain.PollCount, 1),
 	}, nil

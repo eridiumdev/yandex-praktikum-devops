@@ -1,4 +1,4 @@
-package main
+package agent
 
 import (
 	"context"
@@ -38,9 +38,10 @@ func (a *Agent) AddExporter(exp MetricsExporter) {
 
 func (a *Agent) StartCollecting(ctx context.Context) {
 	collectCycles := 0
+	ticker := time.NewTicker(a.collectInterval)
 	for {
 		select {
-		case <-time.Tick(a.collectInterval):
+		case <-ticker.C:
 			collectCycles++
 			logger.New(ctx).Debugf("[agent] collecting cycle %d", collectCycles)
 			for _, col := range a.collectors {
@@ -55,9 +56,10 @@ func (a *Agent) StartCollecting(ctx context.Context) {
 
 func (a *Agent) StartExporting(ctx context.Context) {
 	exportCycles := 0
+	ticker := time.NewTicker(a.exportInterval)
 	for {
 		select {
-		case <-time.Tick(a.exportInterval):
+		case <-ticker.C:
 			exportCycles++
 			logger.New(ctx).Debugf("[agent] exporting cycle %d", exportCycles)
 
@@ -76,46 +78,58 @@ func (a *Agent) StartExporting(ctx context.Context) {
 	}
 }
 
-func (a *Agent) Stop() {
+func (a *Agent) Stop(ctx context.Context) {
 	// Wait for collectors to finish their job
+	// (= try to reserve all available worker threads)
 	for _, col := range a.collectors {
-		<-col.Ready()
+		for i := 0; i < col.MaxThreads(); i++ {
+			col.Reserve(ctx)
+		}
 	}
 	// Wait for exporters to finish their job
+	// (= try to reserve all available worker threads)
 	for _, exp := range a.exporters {
-		<-exp.Ready()
+		for i := 0; i < exp.MaxThreads(); i++ {
+			exp.Reserve(ctx)
+		}
 	}
 }
 
 func (a *Agent) collectMetrics(ctx context.Context, col MetricsCollector) {
-	select {
-	case <-col.Ready():
-		logger.New(ctx).Debugf("[%s collector] start collecting metrics", col.Name())
-		snapshot, err := col.Collect(ctx)
-		if err != nil {
-			logger.New(ctx).Errorf("[%s collector] error when collecting metrics: %s", col.Name(), err.Error())
-		}
-		a.bufferer.Buffer(snapshot)
-		logger.New(ctx).Debugf("[%s collector] finish collecting metrics", col.Name())
-	case <-time.After(a.collectInterval):
-		logger.New(ctx).Errorf("[%s collector] timeout when collecting metrics: collector not yet ready", col.Name())
-	case <-ctx.Done():
-		logger.New(ctx).Debugf("[%s collector] context cancelled, skip collecting", col.Name())
+	reserveCtx, cancel := context.WithTimeout(ctx, a.collectInterval)
+	defer cancel()
+
+	// Try to reserve the collector
+	ok := col.Reserve(reserveCtx)
+	if !ok {
+		logger.New(ctx).Errorf("[%s collector] timeout when collecting metrics: collector still busy", col.Name())
 	}
+	defer col.Release(ctx)
+
+	logger.New(ctx).Debugf("[%s collector] start collecting metrics", col.Name())
+	snapshot, err := col.Collect(ctx)
+	if err != nil {
+		logger.New(ctx).Errorf("[%s collector] error when collecting metrics: %s", col.Name(), err.Error())
+	}
+	a.bufferer.Buffer(snapshot)
+	logger.New(ctx).Debugf("[%s collector] finish collecting metrics", col.Name())
 }
 
 func (a *Agent) exportMetrics(ctx context.Context, exp MetricsExporter, metrics []domain.Metric) {
-	select {
-	case <-exp.Ready():
-		logger.New(ctx).Debugf("[%s exporter] start exporting metrics", exp.Name())
-		err := exp.Export(ctx, metrics)
-		if err != nil {
-			logger.New(ctx).Errorf("[%s exporter] error when exporting metrics: %s", exp.Name(), err.Error())
-		}
-		logger.New(ctx).Debugf("[%s exporter] finish exporting metrics", exp.Name())
-	case <-time.After(a.exportInterval):
-		logger.New(ctx).Errorf("[%s exporter] timeout when exporting metrics: exporter not yet ready", exp.Name())
-	case <-ctx.Done():
-		logger.New(ctx).Debugf("[%s exporter] context cancelled, skip exporting", exp.Name())
+	reserveCtx, cancel := context.WithTimeout(ctx, a.exportInterval)
+	defer cancel()
+
+	// Try to reserve the exporter
+	ok := exp.Reserve(reserveCtx)
+	if !ok {
+		logger.New(ctx).Errorf("[%s exporter] timeout when exporting metrics: exporter still busy", exp.Name())
 	}
+	defer exp.Release(ctx)
+
+	logger.New(ctx).Debugf("[%s exporter] start exporting metrics", exp.Name())
+	err := exp.Export(ctx, metrics)
+	if err != nil {
+		logger.New(ctx).Errorf("[%s exporter] error when exporting metrics: %s", exp.Name(), err.Error())
+	}
+	logger.New(ctx).Debugf("[%s exporter] finish exporting metrics", exp.Name())
 }

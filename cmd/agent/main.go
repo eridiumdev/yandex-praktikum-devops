@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"eridiumdev/yandex-praktikum-go-devops/config"
+	"eridiumdev/yandex-praktikum-go-devops/internal/agent"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/buffering"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/executors/collectors"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/executors/exporters"
+	collectors2 "eridiumdev/yandex-praktikum-go-devops/internal/metrics/collectors"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/exporters"
 )
 
 func main() {
@@ -35,31 +36,31 @@ func main() {
 	// Init buffer for metrics
 	metricsBuffer := buffering.NewInMemBuffer()
 
-	// Init agent
-	agent := NewAgent(cfg, metricsBuffer)
+	// Init agent app
+	app := agent.NewAgent(cfg, metricsBuffer)
 
 	// Init collectors
-	runtimeCollector := collectors.NewRuntimeCollector("runtime")
-	pollCountCollector := collectors.NewPollCountCollector("poll-count")
-	randomCollector, err := collectors.NewRandomCollector("random", cfg.RandomExporter)
+	runtimeCollector := collectors2.NewRuntimeCollector("runtime")
+	pollCountCollector := collectors2.NewPollCountCollector("poll-count")
+	randomCollector, err := collectors2.NewRandomCollector("random", cfg.RandomExporter)
 	if err != nil {
 		logger.New(ctx).Fatalf("Cannot start random collector: %s", err.Error())
 	}
 
 	// Provide collectors to agent
-	agent.AddCollector(runtimeCollector)
-	agent.AddCollector(pollCountCollector)
-	agent.AddCollector(randomCollector)
+	app.AddCollector(runtimeCollector)
+	app.AddCollector(pollCountCollector)
+	app.AddCollector(randomCollector)
 
 	// Init exporters
 	httpExporter := exporters.NewHTTPExporter("http", cfg.HTTPExporter)
-	agent.AddExporter(httpExporter)
+	app.AddExporter(httpExporter)
 
 	// Start agent
-	go agent.StartCollecting(ctx)
+	go app.StartCollecting(ctx)
 	// Wait one collectInterval before running first export
 	time.AfterFunc(cfg.CollectInterval, func() {
-		agent.StartExporting(ctx)
+		app.StartExporting(ctx)
 	})
 	logger.New(ctx).Infof("Agent started")
 
@@ -76,6 +77,6 @@ func main() {
 
 	// Call cancel function and stop the agent
 	cancel()
-	agent.Stop()
+	app.Stop(ctx)
 	logger.New(ctx).Infof("Agent stopped")
 }

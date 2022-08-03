@@ -18,6 +18,7 @@ import (
 	metricsRendering "eridiumdev/yandex-praktikum-go-devops/internal/metrics/rendering"
 	metricsRepository "eridiumdev/yandex-praktikum-go-devops/internal/metrics/repository"
 	_metricsService "eridiumdev/yandex-praktikum-go-devops/internal/metrics/service"
+	"eridiumdev/yandex-praktikum-go-devops/internal/server"
 )
 
 func main() {
@@ -62,12 +63,12 @@ func main() {
 	// Init handlers
 	_ = metricsHttpDelivery.NewMetricsHandler(router, metricsService, metricsRenderer)
 
-	// Init HTTP server
-	server := NewServer(router.GetHandler(), cfg)
+	// Init HTTP server app
+	app := server.NewServer(router.GetHandler(), cfg)
 
 	// Start server
-	logger.New(ctx).Infof("Starting HTTP server on %s", cfg.Address)
-	go server.Start(ctx)
+	logger.New(ctx).Infof("Starting HTTP app on %s", cfg.Address)
+	go app.Start(ctx)
 
 	// Handle OS signals for graceful shutdown
 	quit := make(chan os.Signal, 1)
@@ -82,7 +83,7 @@ func main() {
 	})
 
 	// Stop the server
-	server.Stop(ctx)
+	app.Stop(ctx)
 	logger.New(ctx).Infof("Server stopped")
 
 	// Clean-up other components, e.g. backuper

@@ -9,43 +9,38 @@ import (
 	"github.com/go-resty/resty/v2"
 
 	"eridiumdev/yandex-praktikum-go-devops/config"
-	"eridiumdev/yandex-praktikum-go-devops/internal/common/executor"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/worker"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 
 type HTTPExporter struct {
-	*executor.Executor
+	*worker.Worker
 	address string
 	client  *resty.Client
 }
 
 func NewHTTPExporter(name string, cfg config.HTTPExporterConfig) *HTTPExporter {
 	exp := &HTTPExporter{
-		Executor: executor.New(name),
-		address:  cfg.Address,
+		Worker:  worker.New(name, 1),
+		address: cfg.Address,
 		client: resty.New().
 			SetTimeout(cfg.Timeout),
 	}
-	exp.ReadyUp()
 	return exp
 }
 
 func (exp *HTTPExporter) Export(ctx context.Context, mtx []domain.Metric) error {
-	defer func() {
-		exp.ReadyUp()
-	}()
-
 	for _, metric := range mtx {
 		req, err := exp.prepareRequest(ctx, metric)
 		if err != nil {
 			return err
 		}
 		resp, err := req.Send()
-		logger.New(ctx).Infof("[http exporter] exported %s, status: %s", metric.Name, resp.Status())
 		if err != nil {
 			return err
 		}
+		logger.New(ctx).Infof("[http exporter] exported %s, status: %s", metric.Name, resp.Status())
 	}
 	return nil
 }

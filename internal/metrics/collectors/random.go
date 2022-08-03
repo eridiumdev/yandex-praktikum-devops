@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"eridiumdev/yandex-praktikum-go-devops/config"
-	"eridiumdev/yandex-praktikum-go-devops/internal/common/executor"
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/worker"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 
 type randomCollector struct {
-	*executor.Executor
+	*worker.Worker
 	generator      *rand.Rand
 	randomValueMin int
 	randomValueMax int
@@ -32,20 +32,15 @@ func NewRandomCollector(name string, cfg config.RandomExporterConfig) (*randomCo
 	}
 
 	col := &randomCollector{
-		Executor:       executor.New(name),
+		Worker:         worker.New(name, 1),
 		generator:      rand.New(rand.NewSource(time.Now().UnixNano())),
 		randomValueMin: cfg.Min,
 		randomValueMax: cfg.Max,
 	}
-	col.ReadyUp()
 	return col, nil
 }
 
 func (col *randomCollector) Collect(ctx context.Context) ([]domain.Metric, error) {
-	defer func() {
-		col.ReadyUp()
-	}()
-
 	randomValue := col.generator.Intn((col.randomValueMax-col.randomValueMin)+1) + col.randomValueMin
 
 	return []domain.Metric{
