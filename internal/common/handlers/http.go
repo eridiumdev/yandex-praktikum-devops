@@ -6,12 +6,9 @@ import (
 	"net/http"
 
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
-	"eridiumdev/yandex-praktikum-go-devops/internal/common/routing"
 )
 
-type HTTPHandler struct {
-	Router routing.Router
-}
+type HTTPHandler struct{}
 
 func (h *HTTPHandler) PlainText(ctx context.Context, w http.ResponseWriter, status int, body string) {
 	h.write(ctx, w, status, []byte(body), "text/plain; charset=utf-8")

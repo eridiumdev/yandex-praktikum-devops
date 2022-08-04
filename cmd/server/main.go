@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -61,7 +62,10 @@ func main() {
 	router := routing.NewChiRouter(middleware.URLTrimmer)
 
 	// Init handlers
-	_ = metricsHttpDelivery.NewMetricsHandler(router, metricsService, metricsRenderer)
+	metricsHandler := metricsHttpDelivery.NewMetricsHandler(metricsService, metricsRenderer)
+	router.AddRoute(http.MethodGet, "/", metricsHandler.List, middleware.BasicSet...)
+	router.AddRoute(http.MethodPost, "/value", metricsHandler.Get, middleware.ExtendedSet...)
+	router.AddRoute(http.MethodPost, "/update", metricsHandler.Update, middleware.ExtendedSet...)
 
 	// Init HTTP server app
 	app := server.NewServer(router.GetHandler(), cfg)

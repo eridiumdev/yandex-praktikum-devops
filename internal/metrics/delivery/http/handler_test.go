@@ -83,7 +83,11 @@ func runTests(t *testing.T, tt TestCase) {
 		DoRestore: false,
 	})
 
-	NewMetricsHandler(router, svc, getDummyRenderer())
+	h := NewMetricsHandler(svc, getDummyRenderer())
+	router.AddRoute(http.MethodGet, "/", h.List)
+	router.AddRoute(http.MethodPost, "/value", h.Get)
+	router.AddRoute(http.MethodPost, "/update", h.Update)
+
 	s := httptest.NewServer(router.Mux)
 	defer s.Close()
 
