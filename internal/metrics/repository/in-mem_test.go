@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
@@ -81,8 +80,7 @@ func TestStore(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.have.Store(tt.add)
-			require.NoError(t, err)
+			tt.have.Store(tt.add)
 			assert.EqualValues(t, tt.want, tt.have)
 		})
 	}
@@ -95,7 +93,7 @@ func TestStoreWithRaceCondition(t *testing.T) {
 	done := make(chan int)
 	for i := 0; i < 1000; i++ {
 		go func() {
-			_ = repo.Store(metric)
+			repo.Store(metric)
 			done <- 1
 		}()
 	}
@@ -106,16 +104,16 @@ func TestStoreWithRaceCondition(t *testing.T) {
 			break
 		}
 	}
-	result, err := repo.Get(metric.Name())
-	require.NoError(t, err)
-	assert.Equal(t, domain.Counter(1), result.Value())
+	result, found := repo.Get(metric.Name)
+	assert.True(t, found)
+	assert.Equal(t, domain.Counter(1), result.Counter)
 }
 
 func TestGet(t *testing.T) {
 	mutex := &sync.RWMutex{}
 	type Want struct {
 		metric domain.Metric
-		err    error
+		found  bool
 	}
 	tests := []struct {
 		name string
@@ -128,8 +126,8 @@ func TestGet(t *testing.T) {
 			repo: NewInMemRepo(),
 			get:  domain.PollCount,
 			want: Want{
-				metric: nil,
-				err:    nil,
+				metric: domain.Metric{},
+				found:  false,
 			},
 		},
 		{
@@ -144,7 +142,7 @@ func TestGet(t *testing.T) {
 			get: domain.PollCount,
 			want: Want{
 				metric: domain.NewCounter(domain.PollCount, 10),
-				err:    nil,
+				found:  true,
 			},
 		},
 		{
@@ -158,15 +156,15 @@ func TestGet(t *testing.T) {
 			},
 			get: domain.HeapSys,
 			want: Want{
-				metric: nil,
-				err:    nil,
+				metric: domain.Metric{},
+				found:  false,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			metric, err := tt.repo.Get(tt.get)
-			assert.Equal(t, tt.want.err, err)
+			metric, found := tt.repo.Get(tt.get)
+			assert.Equal(t, tt.want.found, found)
 			assert.Equal(t, tt.want.metric, metric)
 		})
 	}
@@ -174,22 +172,15 @@ func TestGet(t *testing.T) {
 
 func TestList(t *testing.T) {
 	mutex := &sync.RWMutex{}
-	type Want struct {
-		list []domain.Metric
-		err  error
-	}
 	tests := []struct {
 		name string
 		repo *inMemRepo
-		want Want
+		want []domain.Metric
 	}{
 		{
 			name: "get list from empty repo",
 			repo: NewInMemRepo(),
-			want: Want{
-				list: []domain.Metric{},
-				err:  nil,
-			},
+			want: []domain.Metric{},
 		},
 		{
 			name: "get list from non-empty repo",
@@ -200,12 +191,9 @@ func TestList(t *testing.T) {
 				},
 				mutex: mutex,
 			},
-			want: Want{
-				list: []domain.Metric{
-					domain.NewGauge(domain.Alloc, 10.333),
-					domain.NewCounter(domain.PollCount, 10),
-				},
-				err: nil,
+			want: []domain.Metric{
+				domain.NewGauge(domain.Alloc, 10.333),
+				domain.NewCounter(domain.PollCount, 10),
 			},
 		},
 		{
@@ -217,20 +205,16 @@ func TestList(t *testing.T) {
 				},
 				mutex: mutex,
 			},
-			want: Want{
-				list: []domain.Metric{
-					domain.NewCounter(domain.PollCount, 10),
-					domain.NewGauge(domain.Alloc, 10.333),
-				},
-				err: nil,
+			want: []domain.Metric{
+				domain.NewCounter(domain.PollCount, 10),
+				domain.NewGauge(domain.Alloc, 10.333),
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			list, err := tt.repo.List()
-			assert.Equal(t, tt.want.err, err)
-			assert.ElementsMatch(t, tt.want.list, list)
+			list := tt.repo.List()
+			assert.ElementsMatch(t, tt.want, list)
 		})
 	}
 }

@@ -5,24 +5,22 @@ const (
 	TypeCounter = "counter"
 )
 
-type MetricValue interface{}
-
-type Metric interface {
-	Name() string
-	Type() string
-	Value() MetricValue
-	StringValue() string
-	Add(value MetricValue) error
-	Set(value MetricValue) error
-	Copy() Metric
+type Metric struct {
+	Name    string
+	Type    string
+	Counter Counter
+	Gauge   Gauge
 }
 
-type abstractMetric struct {
-	name string
-}
-
-func (m *abstractMetric) Name() string {
-	return m.name
+func (m Metric) StringValue() string {
+	switch m.Type {
+	case TypeCounter:
+		return m.Counter.String()
+	case TypeGauge:
+		return m.Gauge.String()
+	default:
+		return ""
+	}
 }
 
 func IsValidMetricType(metricType string) bool {

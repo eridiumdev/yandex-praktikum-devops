@@ -3,18 +3,17 @@ package buffering
 import (
 	"sync"
 
-	"eridiumdev/yandex-praktikum-go-devops/internal/commons/logger"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 
 type inMemBuffer struct {
-	buffer map[string]domain.Metric
+	buffer map[string]*domain.Metric
 	mutex  *sync.RWMutex
 }
 
 func NewInMemBuffer() *inMemBuffer {
 	return &inMemBuffer{
-		buffer: make(map[string]domain.Metric),
+		buffer: make(map[string]*domain.Metric),
 		mutex:  &sync.RWMutex{},
 	}
 }
@@ -23,29 +22,19 @@ func (b *inMemBuffer) Buffer(mtx []domain.Metric) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	for _, metric := range mtx {
-		if _, ok := b.buffer[metric.Name()]; ok {
-			switch metric.Type() {
+	for i, metric := range mtx {
+		if _, ok := b.buffer[metric.Name]; ok {
+			switch metric.Type {
 			case domain.TypeCounter:
-				// For counters, new value is added on top of previous value
-				err := b.buffer[metric.Name()].Add(metric.Value())
-				if err != nil {
-					logger.Errorf("[bufferer] error when calling Add(%v) on metric %s: %s",
-						metric.Value(), metric.Name(), err.Error())
-				}
+				// For counters, new value is added on top of previous value with AddCounter()
+				b.buffer[metric.Name].Counter += metric.Counter
 			case domain.TypeGauge:
-				fallthrough
-			default:
-				// For gauges, previous value is overwritten
-				err := b.buffer[metric.Name()].Set(metric.Value())
-				if err != nil {
-					logger.Errorf("[bufferer] error when calling Set(%v) on metric %s: %s",
-						metric.Value(), metric.Name(), err.Error())
-				}
+				// For gauges, previous value is overwritten with SetGauge()
+				b.buffer[metric.Name].Gauge = metric.Gauge
 			}
 		} else {
-			// Add copy of metric to the buffer
-			b.buffer[metric.Name()] = metric.Copy()
+			// Add metric to the buffer
+			b.buffer[metric.Name] = &mtx[i]
 		}
 	}
 }
@@ -57,7 +46,7 @@ func (b *inMemBuffer) Retrieve() []domain.Metric {
 	result := make([]domain.Metric, 0)
 
 	for _, metric := range b.buffer {
-		result = append(result, metric.Copy())
+		result = append(result, *metric)
 	}
 	return result
 }
@@ -66,5 +55,5 @@ func (b *inMemBuffer) Flush() {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	b.buffer = make(map[string]domain.Metric)
+	b.buffer = make(map[string]*domain.Metric)
 }
