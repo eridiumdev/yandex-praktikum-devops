@@ -11,19 +11,26 @@ import (
 	"eridiumdev/yandex-praktikum-go-devops/config"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/worker"
+	delivery "eridiumdev/yandex-praktikum-go-devops/internal/metrics/delivery/http"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 
 type HTTPExporter struct {
 	*worker.Worker
 	address string
+	factory delivery.MetricsRequestResponseFactory
 	client  *resty.Client
 }
 
-func NewHTTPExporter(name string, cfg config.HTTPExporterConfig) *HTTPExporter {
+func NewHTTPExporter(
+	name string,
+	factory delivery.MetricsRequestResponseFactory,
+	cfg config.HTTPExporterConfig,
+) *HTTPExporter {
 	exp := &HTTPExporter{
 		Worker:  worker.New(name, 1),
 		address: cfg.Address,
+		factory: factory,
 		client: resty.New().
 			SetTimeout(cfg.Timeout),
 	}
@@ -47,7 +54,7 @@ func (exp *HTTPExporter) Export(ctx context.Context, mtx []domain.Metric) error 
 
 func (exp *HTTPExporter) prepareRequest(ctx context.Context, metric domain.Metric) (*resty.Request, error) {
 	// http://<АДРЕС_СЕРВЕРА>/update
-	body, err := json.Marshal(domain.PrepareUpdateMetricRequest(metric))
+	body, err := json.Marshal(exp.factory.BuildUpdateMetricRequest(ctx, metric))
 	if err != nil {
 		return nil, err
 	}

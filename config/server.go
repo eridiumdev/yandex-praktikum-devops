@@ -13,6 +13,7 @@ type ServerConfig struct {
 	FileBackuperPath string        `env:"STORE_FILE"`
 	ShutdownTimeout  time.Duration `env:"SHUTDOWN_TIMEOUT" envDefault:"3s"`
 	Backup           BackupConfig
+	HashKey          string `env:"KEY"`
 }
 
 type BackupConfig struct {
@@ -28,6 +29,7 @@ func LoadServerConfig() (*ServerConfig, error) {
 	flag.StringVar(&cfg.FileBackuperPath, "f", "/tmp/devops-metrics-db.json", "backup file path")
 	flag.BoolVar(&cfg.Backup.DoRestore, "r", true, "restore from backup file on server start")
 	flag.DurationVar(&cfg.Backup.Interval, "i", 300*time.Second, "backup/store interval")
+	flag.StringVar(&cfg.HashKey, "k", "", "Hash key for verifying incoming requests' hash-sums")
 
 	parseLoggerConfigFlags(&cfg.Logger)
 

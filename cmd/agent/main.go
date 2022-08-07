@@ -12,8 +12,10 @@ import (
 	"eridiumdev/yandex-praktikum-go-devops/internal/agent"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/buffering"
-	collectors2 "eridiumdev/yandex-praktikum-go-devops/internal/metrics/collectors"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/collectors"
+	delivery "eridiumdev/yandex-praktikum-go-devops/internal/metrics/delivery/http"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/exporters"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/hash"
 )
 
 func main() {
@@ -40,9 +42,9 @@ func main() {
 	app := agent.NewAgent(cfg, metricsBuffer)
 
 	// Init collectors
-	runtimeCollector := collectors2.NewRuntimeCollector("runtime")
-	pollCountCollector := collectors2.NewPollCountCollector("poll-count")
-	randomCollector, err := collectors2.NewRandomCollector("random", cfg.RandomExporter)
+	runtimeCollector := collectors.NewRuntimeCollector("runtime")
+	pollCountCollector := collectors.NewPollCountCollector("poll-count")
+	randomCollector, err := collectors.NewRandomCollector("random", cfg.RandomExporter)
 	if err != nil {
 		logger.New(ctx).Fatalf("Cannot start random collector: %s", err.Error())
 	}
@@ -52,8 +54,12 @@ func main() {
 	app.AddCollector(pollCountCollector)
 	app.AddCollector(randomCollector)
 
+	// Init auxiliary components
+	hasher := hash.NewHasher(cfg.HashKey)
+	requestResponseFactory := delivery.NewRequestResponseFactory(hasher)
+
 	// Init exporters
-	httpExporter := exporters.NewHTTPExporter("http", cfg.HTTPExporter)
+	httpExporter := exporters.NewHTTPExporter("http", requestResponseFactory, cfg.HTTPExporter)
 	app.AddExporter(httpExporter)
 
 	// Start agent

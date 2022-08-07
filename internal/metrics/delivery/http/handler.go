@@ -15,6 +15,7 @@ import (
 const (
 	ErrStringInvalidJSON       = "invalid JSON"
 	ErrStringInvalidMetricType = "invalid metric type"
+	ErrStringInvalidHash       = "invalid hash"
 	ErrStringMetricNotFound    = "metric not found"
 	ErrStringRenderingError    = "rendering error"
 )
@@ -23,13 +24,22 @@ type MetricsHandler struct {
 	*handlers.HTTPHandler
 	service  MetricsService
 	renderer MetricsRenderer
+	factory  MetricsRequestResponseFactory
+	hasher   MetricsHasher
 }
 
-func NewMetricsHandler(service MetricsService, renderer MetricsRenderer) *MetricsHandler {
+func NewMetricsHandler(
+	service MetricsService,
+	renderer MetricsRenderer,
+	factory MetricsRequestResponseFactory,
+	hasher MetricsHasher,
+) *MetricsHandler {
 	return &MetricsHandler{
 		HTTPHandler: &handlers.HTTPHandler{},
 		service:     service,
 		renderer:    renderer,
+		factory:     factory,
+		hasher:      hasher,
 	}
 }
 
@@ -58,9 +68,15 @@ func (h *MetricsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.Value != nil {
 		metric.Gauge = domain.Gauge(*req.Value)
 	}
+	// Validate hash
+	if req.Hash != "" && !h.hasher.Check(ctx, metric, req.Hash) {
+		logger.New(ctx).Errorf("[metrics handler] provided hash is invalid")
+		h.PlainText(ctx, w, http.StatusBadRequest, ErrStringInvalidHash)
+		return
+	}
 	updatedMetric, _ := h.service.Update(metric)
 
-	h.JSON(ctx, w, http.StatusOK, domain.PrepareUpdateMetricResponse(updatedMetric))
+	h.JSON(ctx, w, http.StatusOK, h.factory.BuildUpdateMetricResponse(ctx, updatedMetric))
 }
 
 func (h *MetricsHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +101,7 @@ func (h *MetricsHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.JSON(ctx, w, http.StatusOK, domain.PrepareGetMetricResponse(metric))
+	h.JSON(ctx, w, http.StatusOK, h.factory.BuildGetMetricResponse(ctx, metric))
 }
 
 func (h *MetricsHandler) List(w http.ResponseWriter, r *http.Request) {

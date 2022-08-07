@@ -16,6 +16,7 @@ import (
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/templating"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/backup"
 	metricsHttpDelivery "eridiumdev/yandex-praktikum-go-devops/internal/metrics/delivery/http"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/hash"
 	metricsRendering "eridiumdev/yandex-praktikum-go-devops/internal/metrics/rendering"
 	metricsRepository "eridiumdev/yandex-praktikum-go-devops/internal/metrics/repository"
 	_metricsService "eridiumdev/yandex-praktikum-go-devops/internal/metrics/service"
@@ -61,8 +62,13 @@ func main() {
 	// Init router
 	router := routing.NewChiRouter(middleware.URLTrimmer)
 
+	// Init auxiliary components
+	metricsHasher := hash.NewHasher(cfg.HashKey)
+	metricsRequestResponseFactory := metricsHttpDelivery.NewRequestResponseFactory(metricsHasher)
+
 	// Init handlers
-	metricsHandler := metricsHttpDelivery.NewMetricsHandler(metricsService, metricsRenderer)
+	metricsHandler := metricsHttpDelivery.NewMetricsHandler(
+		metricsService, metricsRenderer, metricsRequestResponseFactory, metricsHasher)
 	router.AddRoute(http.MethodGet, "/", metricsHandler.List, middleware.BasicSet...)
 	router.AddRoute(http.MethodPost, "/value", metricsHandler.Get, middleware.ExtendedSet...)
 	router.AddRoute(http.MethodPost, "/update", metricsHandler.Update, middleware.ExtendedSet...)
