@@ -66,7 +66,7 @@ type TestCase struct {
 }
 
 func init() {
-	logger.Init(context.Background(), config.LoggerConfig{
+	logger.InitZerolog(context.Background(), config.LoggerConfig{
 		Level: logger.LevelCritical,
 		Mode:  logger.ModeDevelopment,
 	})

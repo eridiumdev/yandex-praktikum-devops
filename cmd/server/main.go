@@ -33,7 +33,7 @@ func main() {
 	}
 
 	// Init logger and update context
-	ctx = logger.Init(context.Background(), cfg.Logger)
+	ctx = logger.InitZerolog(context.Background(), cfg.Logger)
 	logger.New(ctx).Infof("Logger started")
 
 	// Modify context with cancel func for graceful shutdown
