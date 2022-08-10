@@ -20,6 +20,7 @@ import (
 	metricsRendering "eridiumdev/yandex-praktikum-go-devops/internal/metrics/rendering"
 	metricsRepository "eridiumdev/yandex-praktikum-go-devops/internal/metrics/repository"
 	_metricsService "eridiumdev/yandex-praktikum-go-devops/internal/metrics/service"
+	monitoringHttpDelivery "eridiumdev/yandex-praktikum-go-devops/internal/monitoring/delivery/http"
 	"eridiumdev/yandex-praktikum-go-devops/internal/server"
 )
 
@@ -40,17 +41,33 @@ func main() {
 	// Modify context with cancel func for graceful shutdown
 	ctx, cancel := context.WithCancel(ctx)
 
-	// Init repos
-	inMemRepo := metricsRepository.NewInMemRepo()
+	// Init repo and backuper, as well as monitored (pingable) components
+	var repo _metricsService.MetricsRepository
+	var backuper _metricsService.MetricsBackuper
+	pingable := make([]monitoringHttpDelivery.Pingable, 0)
 
-	// Init backupers
-	fileBackuper, err := backup.NewFileBackuper(ctx, cfg.FileBackuperPath)
-	if err != nil {
-		logger.New(ctx).Fatalf("Cannot init file backuper: %s", err.Error())
+	if cfg.Database.DSN != "" {
+		postgresRepo, pgErr := metricsRepository.NewPostgresRepo(ctx, cfg.Database)
+		if pgErr != nil {
+			logger.New(ctx).Fatalf("Cannot init postgres repo: %s", pgErr.Error())
+		}
+		// Add postgres repo to monitored components
+		pingable = append(pingable, postgresRepo)
+		// Assign postgresRepo to repo (this way postgresRepo can be used as both MetricsRepository and Pingable)
+		repo = postgresRepo
+		// Backuper is not needed if database is used
+		backuper = nil
+	} else {
+		// If database is not enabled, use in-mem repo + file backuper
+		repo = metricsRepository.NewInMemRepo()
+		backuper, err = backup.NewFileBackuper(ctx, cfg.FileBackuperPath)
+		if err != nil {
+			logger.New(ctx).Fatalf("Cannot init file backuper: %s", err.Error())
+		}
 	}
 
 	// Init services
-	metricsService, err := _metricsService.NewMetricsService(ctx, inMemRepo, fileBackuper, cfg.Backup)
+	metricsService, err := _metricsService.NewMetricsService(ctx, repo, backuper, cfg.Backup)
 	if err != nil {
 		logger.New(ctx).Fatalf("Cannot init metrics service: %s", err.Error())
 	}
@@ -72,6 +89,9 @@ func main() {
 	router.AddRoute(http.MethodGet, "/", metricsHandler.List, middleware.BasicSet...)
 	router.AddRoute(http.MethodPost, "/value", metricsHandler.Get, middleware.ExtendedSet...)
 	router.AddRoute(http.MethodPost, "/update", metricsHandler.Update, middleware.ExtendedSet...)
+
+	monitoringHandler := monitoringHttpDelivery.NewMonitoringHandler(pingable...)
+	router.AddRoute(http.MethodGet, "/ping", monitoringHandler.Ping, middleware.BasicSet...)
 
 	// Init HTTP server app
 	app := server.NewServer(router.GetHandler(), cfg)

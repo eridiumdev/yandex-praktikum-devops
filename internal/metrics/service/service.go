@@ -26,14 +26,16 @@ func NewMetricsService(
 		repo:     repo,
 		backuper: backuper,
 	}
-	if backupCfg.DoRestore {
-		err := s.restoreFromLastBackup(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to restore from backup")
+	if backuper != nil {
+		if backupCfg.DoRestore {
+			err := s.restoreFromLastBackup(ctx)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to restore from backup")
+			}
 		}
-	}
-	if backupCfg.Interval > 0 {
-		go s.startDoingBackups(ctx, backupCfg.Interval)
+		if backupCfg.Interval > 0 {
+			go s.startDoingBackups(ctx, backupCfg.Interval)
+		}
 	}
 	return s, nil
 }
