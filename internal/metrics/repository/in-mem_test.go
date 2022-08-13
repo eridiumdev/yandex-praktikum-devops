@@ -1,10 +1,12 @@
 package repository
 
 import (
+	"context"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
@@ -80,7 +82,9 @@ func TestStore(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.have.Store(tt.add)
+			ctx := context.Background()
+			err := tt.have.Store(ctx, tt.add)
+			require.NoError(t, err)
 			assert.EqualValues(t, tt.want, tt.have)
 		})
 	}
@@ -91,9 +95,10 @@ func TestStoreWithRaceCondition(t *testing.T) {
 	metric := domain.NewCounter(domain.PollCount, 1)
 
 	done := make(chan int)
+	ctx := context.Background()
 	for i := 0; i < 1000; i++ {
 		go func() {
-			repo.Store(metric)
+			_ = repo.Store(ctx, metric)
 			done <- 1
 		}()
 	}
@@ -104,7 +109,8 @@ func TestStoreWithRaceCondition(t *testing.T) {
 			break
 		}
 	}
-	result, found := repo.Get(metric.Name)
+	result, found, err := repo.Get(ctx, metric.Name)
+	require.NoError(t, err)
 	assert.True(t, found)
 	assert.Equal(t, domain.Counter(1), result.Counter)
 }
@@ -163,7 +169,9 @@ func TestGet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			metric, found := tt.repo.Get(tt.get)
+			ctx := context.Background()
+			metric, found, err := tt.repo.Get(ctx, tt.get)
+			require.NoError(t, err)
 			assert.Equal(t, tt.want.found, found)
 			assert.Equal(t, tt.want.metric, metric)
 		})
@@ -213,7 +221,9 @@ func TestList(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			list := tt.repo.List()
+			ctx := context.Background()
+			list, err := tt.repo.List(ctx)
+			require.NoError(t, err)
 			assert.ElementsMatch(t, tt.want, list)
 		})
 	}

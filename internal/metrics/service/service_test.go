@@ -15,8 +15,9 @@ import (
 
 func getDummyRepo() MetricsRepository {
 	repo := repository.NewInMemRepo()
-	repo.Store(domain.NewCounter(domain.PollCount, 10))
-	repo.Store(domain.NewGauge(domain.Alloc, 10.333))
+	ctx := context.Background()
+	_ = repo.Store(ctx, domain.NewCounter(domain.PollCount, 10))
+	_ = repo.Store(ctx, domain.NewGauge(domain.Alloc, 10.333))
 	return repo
 }
 
@@ -75,7 +76,8 @@ func TestUpdate(t *testing.T) {
 			var result domain.Metric
 
 			for _, update := range tt.updates {
-				result, _ = service.Update(update)
+				result, err = service.Update(ctx, update)
+				require.NoError(t, err)
 			}
 			assert.Equal(t, tt.want, result)
 		})
@@ -118,7 +120,8 @@ func TestGet(t *testing.T) {
 			service, err := NewMetricsService(ctx, repo, backuper, config.BackupConfig{})
 			require.NoError(t, err)
 
-			metric, found := service.Get(tt.mName)
+			metric, found, err := service.Get(ctx, tt.mName)
+			require.NoError(t, err)
 			assert.Equal(t, tt.want.metric, metric)
 			assert.Equal(t, tt.want.found, found)
 		})
@@ -153,7 +156,8 @@ func TestList(t *testing.T) {
 			service, err := NewMetricsService(ctx, tt.repo, backuper, config.BackupConfig{})
 			require.NoError(t, err)
 
-			list := service.List()
+			list, err := service.List(ctx)
+			require.NoError(t, err)
 			assert.ElementsMatch(t, tt.want, list)
 		})
 	}

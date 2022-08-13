@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"eridiumdev/yandex-praktikum-go-devops/config"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
@@ -18,6 +19,8 @@ func NewServer(handler http.Handler, cfg *config.ServerConfig) *Server {
 		Server: &http.Server{
 			Addr:    cfg.Address,
 			Handler: handler,
+			// golangci-lint: Potential Slowloris Attack because ReadHeaderTimeout is not configured in the http.Server
+			ReadHeaderTimeout: time.Second,
 		},
 	}
 }

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 
@@ -8,9 +10,9 @@ import (
 
 // MetricsRepository should store and retrieve metrics using backend storage
 type MetricsRepository interface {
-	Store(metric domain.Metric)
-	Get(name string) (metric domain.Metric, found bool)
-	List() []domain.Metric
+	Store(ctx context.Context, metric domain.Metric) error
+	Get(ctx context.Context, name string) (m domain.Metric, found bool, err error)
+	List(ctx context.Context) ([]domain.Metric, error)
 }
 
 // MetricsBackuper should be able to backup and restore metrics using long-term storage

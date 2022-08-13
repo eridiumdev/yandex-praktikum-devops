@@ -13,5 +13,6 @@ services:
     ports:
       - "55432:5432"
     environment:
+      POSTGRES_DB: yandex_practicum_go_devops
       POSTGRES_USER: root
       POSTGRES_PASSWORD: 1234

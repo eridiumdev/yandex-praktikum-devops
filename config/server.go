@@ -15,6 +15,7 @@ type ServerConfig struct {
 	Backup           BackupConfig
 	Database         DatabaseConfig `envPrefix:"DATABASE_"`
 	HashKey          string         `env:"KEY"`
+	TemplatesDir     string         `env:"RENDERING_TEMPLATES_DIR" envDefault:"web/templates"`
 }
 
 type BackupConfig struct {
@@ -24,6 +25,7 @@ type BackupConfig struct {
 
 type DatabaseConfig struct {
 	DSN            string        `env:"DSN"`
+	MigrationsDir  string        `env:"MIGRATIONS_DIR" envDefault:"migrations"`
 	ConnectTimeout time.Duration `env:"CONNECT_TIMEOUT" envDefault:"3s"`
 }
 

@@ -3,7 +3,6 @@ package middleware
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -57,8 +56,8 @@ func LogRequestsWithBody(next http.Handler) http.Handler {
 		var body []byte
 		if r.Body != nil {
 			tee := io.TeeReader(r.Body, &buf)
-			body, _ = ioutil.ReadAll(tee)
-			r.Body = ioutil.NopCloser(&buf)
+			body, _ = io.ReadAll(tee)
+			r.Body = io.NopCloser(&buf)
 		}
 		logger.New(r.Context()).
 			Field("host", r.Host).
@@ -79,7 +78,7 @@ func LogResponsesWithBody(next http.Handler) http.Handler {
 		ww.Tee(&buf)
 		start := time.Now()
 		defer func() {
-			body, _ := ioutil.ReadAll(&buf)
+			body, _ := io.ReadAll(&buf)
 			logger.New(r.Context()).
 				Field("status", ww.Status()).
 				Field("content_type", ww.Header().Get("Content-Type")).

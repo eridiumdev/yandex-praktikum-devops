@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"sync"
 
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
@@ -18,22 +19,23 @@ func NewInMemRepo() *inMemRepo {
 	}
 }
 
-func (r *inMemRepo) Store(metric domain.Metric) {
+func (r *inMemRepo) Store(ctx context.Context, metric domain.Metric) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
 	r.metrics[metric.Name] = metric
+	return nil
 }
 
-func (r *inMemRepo) Get(name string) (domain.Metric, bool) {
+func (r *inMemRepo) Get(ctx context.Context, name string) (domain.Metric, bool, error) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
 	metric, ok := r.metrics[name]
-	return metric, ok
+	return metric, ok, nil
 }
 
-func (r *inMemRepo) List() []domain.Metric {
+func (r *inMemRepo) List(ctx context.Context) ([]domain.Metric, error) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
@@ -41,5 +43,5 @@ func (r *inMemRepo) List() []domain.Metric {
 	for _, metric := range r.metrics {
 		result = append(result, metric)
 	}
-	return result
+	return result, nil
 }

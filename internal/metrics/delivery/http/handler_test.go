@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -51,8 +51,9 @@ func getDummyFactory() MetricsRequestResponseFactory {
 
 func getDummyRepo() service.MetricsRepository {
 	r := repository.NewInMemRepo()
-	r.Store(domain.NewCounter(domain.PollCount, 5))
-	r.Store(domain.NewGauge(domain.Alloc, 10.123))
+	ctx := context.Background()
+	_ = r.Store(ctx, domain.NewCounter(domain.PollCount, 5))
+	_ = r.Store(ctx, domain.NewGauge(domain.Alloc, 10.123))
 	return r
 }
 
@@ -109,7 +110,7 @@ func runTests(t *testing.T, tt TestCase) {
 	resp, doErr := http.DefaultClient.Do(req)
 	require.NoError(t, doErr)
 
-	body, readErr := ioutil.ReadAll(resp.Body)
+	body, readErr := io.ReadAll(resp.Body)
 	require.NoError(t, readErr)
 	defer resp.Body.Close()
 

@@ -73,7 +73,7 @@ func main() {
 	}
 
 	// Init rendering engines
-	templateParser := templating.NewHTMLTemplateParser("web/templates")
+	templateParser := templating.NewHTMLTemplateParser(cfg.TemplatesDir)
 	metricsRenderer := metricsRendering.NewHTMLEngine(templateParser)
 
 	// Init router

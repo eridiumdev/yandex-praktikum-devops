@@ -18,6 +18,7 @@ const (
 	ErrStringInvalidHash       = "invalid hash"
 	ErrStringMetricNotFound    = "metric not found"
 	ErrStringRenderingError    = "rendering error"
+	ErrStringDatabaseError     = "database error"
 )
 
 type MetricsHandler struct {
@@ -74,7 +75,12 @@ func (h *MetricsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		h.PlainText(ctx, w, http.StatusBadRequest, ErrStringInvalidHash)
 		return
 	}
-	updatedMetric, _ := h.service.Update(metric)
+	updatedMetric, err := h.service.Update(ctx, metric)
+	if err != nil {
+		logger.New(ctx).Errorf("[metrics handler] error when updating metric: %s", err.Error())
+		h.PlainText(ctx, w, http.StatusInternalServerError, ErrStringDatabaseError)
+		return
+	}
 
 	h.JSON(ctx, w, http.StatusOK, h.factory.BuildUpdateMetricResponse(ctx, updatedMetric))
 }
@@ -94,7 +100,12 @@ func (h *MetricsHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metric, found := h.service.Get(req.ID)
+	metric, found, err := h.service.Get(ctx, req.ID)
+	if err != nil {
+		logger.New(ctx).Errorf("[metrics handler] error when getting metric: %s", err.Error())
+		h.PlainText(ctx, w, http.StatusInternalServerError, ErrStringDatabaseError)
+		return
+	}
 	if !found || metric.Type != req.MType {
 		logger.New(ctx).Errorf("[metrics handler] metric '%s/%s' not found", req.MType, req.ID)
 		h.PlainText(ctx, w, http.StatusNotFound, ErrStringMetricNotFound)
@@ -106,7 +117,12 @@ func (h *MetricsHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 func (h *MetricsHandler) List(w http.ResponseWriter, r *http.Request) {
 	ctx := logger.ContextFromRequest(r)
-	list := h.service.List()
+	list, err := h.service.List(ctx)
+	if err != nil {
+		logger.New(ctx).Errorf("[metrics handler] error when getting metrics: %s", err.Error())
+		h.PlainText(ctx, w, http.StatusInternalServerError, ErrStringDatabaseError)
+		return
+	}
 
 	// Sort metrics by name
 	sort.Slice(list, func(i, j int) bool {
