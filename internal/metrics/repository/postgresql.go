@@ -101,7 +101,7 @@ func (r *postgresRepo) Get(ctx context.Context, name string) (domain.Metric, boo
 func (r *postgresRepo) List(ctx context.Context) ([]domain.Metric, error) {
 	metrics := make([]domain.Metric, 0)
 
-	rows, err := r.db.QueryContext(ctx, "SELECT * FROM metrics ORDER BY id desc")
+	rows, err := r.db.QueryContext(ctx, "SELECT name, type, counter, gauge FROM metrics ORDER BY id desc")
 	if err != nil {
 		return metrics, err
 	}
@@ -109,10 +109,11 @@ func (r *postgresRepo) List(ctx context.Context) ([]domain.Metric, error) {
 
 	for rows.Next() {
 		var metric domain.Metric
-		err = rows.Scan(&metric)
+		err = rows.Scan(&metric.Name, &metric.Type, &metric.Counter, &metric.Gauge)
 		if err != nil {
 			return metrics, err
 		}
+		metrics = append(metrics, metric)
 	}
 	return metrics, rows.Err()
 }
