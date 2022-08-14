@@ -54,27 +54,19 @@ func (h *MetricsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !domain.IsValidMetricType(req.MType) {
-		logger.New(ctx).Errorf("[metrics handler] received invalid req type '%s'", req.MType)
+		logger.New(ctx).Errorf("[metrics handler] received invalid metric type '%s'", req.MType)
 		h.PlainText(ctx, w, http.StatusNotImplemented, ErrStringInvalidMetricType)
 		return
 	}
+	metric := req.TranslateToMetric()
 
-	metric := domain.Metric{
-		Name: req.ID,
-		Type: req.MType,
-	}
-	if req.Delta != nil {
-		metric.Counter = domain.Counter(*req.Delta)
-	}
-	if req.Value != nil {
-		metric.Gauge = domain.Gauge(*req.Value)
-	}
 	// Validate hash
 	if req.Hash != "" && !h.hasher.Check(ctx, metric, req.Hash) {
 		logger.New(ctx).Errorf("[metrics handler] provided hash is invalid")
 		h.PlainText(ctx, w, http.StatusBadRequest, ErrStringInvalidHash)
 		return
 	}
+
 	updatedMetric, err := h.service.Update(ctx, metric)
 	if err != nil {
 		logger.New(ctx).Errorf("[metrics handler] error when updating metric: %s", err.Error())
@@ -83,6 +75,43 @@ func (h *MetricsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.JSON(ctx, w, http.StatusOK, h.factory.BuildUpdateMetricResponse(ctx, updatedMetric))
+}
+
+func (h *MetricsHandler) UpdateBatch(w http.ResponseWriter, r *http.Request) {
+	ctx := logger.ContextFromRequest(r)
+	var req []domain.UpdateMetricRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logger.New(ctx).Errorf("[metrics handler] received invalid JSON: %s", err.Error())
+		h.PlainText(ctx, w, http.StatusBadRequest, ErrStringInvalidJSON)
+		return
+	}
+
+	metrics := make([]domain.Metric, 0)
+	for _, reqMetric := range req {
+		if !domain.IsValidMetricType(reqMetric.MType) {
+			logger.New(ctx).Errorf("[metrics handler] received invalid metric type '%s'", reqMetric.MType)
+			h.PlainText(ctx, w, http.StatusNotImplemented, ErrStringInvalidMetricType)
+			return
+		}
+		metric := reqMetric.TranslateToMetric()
+
+		// Validate hash
+		if reqMetric.Hash != "" && !h.hasher.Check(ctx, metric, reqMetric.Hash) {
+			logger.New(ctx).Errorf("[metrics handler] provided hash is invalid")
+			h.PlainText(ctx, w, http.StatusBadRequest, ErrStringInvalidHash)
+			return
+		}
+		metrics = append(metrics, metric)
+	}
+
+	updatedMetrics, err := h.service.UpdateMany(ctx, metrics)
+	if err != nil {
+		logger.New(ctx).Errorf("[metrics handler] error when updating metric: %s", err.Error())
+		h.PlainText(ctx, w, http.StatusInternalServerError, ErrStringDatabaseError)
+		return
+	}
+
+	h.JSON(ctx, w, http.StatusOK, h.factory.BuildUpdateBatchMetricResponse(ctx, updatedMetrics))
 }
 
 func (h *MetricsHandler) Get(w http.ResponseWriter, r *http.Request) {

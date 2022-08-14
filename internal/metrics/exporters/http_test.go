@@ -22,27 +22,31 @@ func TestPrepareRequest(t *testing.T) {
 		contentType string
 	}
 	tests := []struct {
-		name   string
-		metric domain.Metric
-		want   Want
+		name    string
+		metrics []domain.Metric
+		want    Want
 	}{
 		{
-			name:   "counter",
-			metric: domain.NewCounter(domain.PollCount, 5),
+			name: "counter",
+			metrics: []domain.Metric{
+				domain.NewCounter(domain.PollCount, 5),
+			},
 			want: Want{
-				url:         "http://localhost:80/update",
+				url:         "http://localhost:80/updates",
 				method:      http.MethodPost,
-				body:        `{"id":"PollCount","type":"counter","delta":5,"hash":"7148ff92910a879bba42647839901cdd4f9c68f952657e36ead4e894511d82af"}`,
+				body:        `[{"id":"PollCount","type":"counter","delta":5,"hash":"7148ff92910a879bba42647839901cdd4f9c68f952657e36ead4e894511d82af"}]`,
 				contentType: "application/json",
 			},
 		},
 		{
-			name:   "gauge",
-			metric: domain.NewGauge(domain.Alloc, 10.333),
+			name: "gauge",
+			metrics: []domain.Metric{
+				domain.NewGauge(domain.Alloc, 10.333),
+			},
 			want: Want{
-				url:         "http://localhost:80/update",
+				url:         "http://localhost:80/updates",
 				method:      http.MethodPost,
-				body:        `{"id":"Alloc","type":"gauge","value":10.333,"hash":"c4873e615e845fc90113575d072888a3f701c0620efb01bdce186d52ac1a3512"}`,
+				body:        `[{"id":"Alloc","type":"gauge","value":10.333,"hash":"c4873e615e845fc90113575d072888a3f701c0620efb01bdce186d52ac1a3512"}]`,
 				contentType: "application/json",
 			},
 		},
@@ -55,7 +59,7 @@ func TestPrepareRequest(t *testing.T) {
 					Address: "localhost:80",
 					Timeout: 5,
 				})
-			req, err := exp.prepareRequest(context.Background(), tt.metric)
+			req, err := exp.prepareRequest(context.Background(), tt.metrics)
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.want.url, req.URL, "url")

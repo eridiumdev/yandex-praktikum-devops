@@ -23,3 +23,17 @@ type GetMetricRequest struct {
 type GetMetricResponse struct {
 	GenericMetric
 }
+
+func (g GenericMetric) TranslateToMetric() Metric {
+	metric := Metric{
+		Name: g.ID,
+		Type: g.MType,
+	}
+	if g.Delta != nil {
+		metric.Counter = Counter(*g.Delta)
+	}
+	if g.Value != nil {
+		metric.Gauge = Gauge(*g.Value)
+	}
+	return metric
+}

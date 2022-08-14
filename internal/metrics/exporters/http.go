@@ -37,30 +37,28 @@ func NewHTTPExporter(
 	return exp
 }
 
-func (exp *HTTPExporter) Export(ctx context.Context, mtx []domain.Metric) error {
-	for _, metric := range mtx {
-		req, err := exp.prepareRequest(ctx, metric)
-		if err != nil {
-			return err
-		}
-		resp, err := req.Send()
-		if err != nil {
-			return err
-		}
-		logger.New(ctx).Infof("[http exporter] exported %s, status: %s", metric.Name, resp.Status())
+func (exp *HTTPExporter) Export(ctx context.Context, metrics []domain.Metric) error {
+	req, err := exp.prepareRequest(ctx, metrics)
+	if err != nil {
+		return err
 	}
+	resp, err := req.Send()
+	if err != nil {
+		return err
+	}
+	logger.New(ctx).Infof("[http exporter] exported %d metrics successfully, status %s", len(metrics), resp.Status())
 	return nil
 }
 
-func (exp *HTTPExporter) prepareRequest(ctx context.Context, metric domain.Metric) (*resty.Request, error) {
-	// http://<АДРЕС_СЕРВЕРА>/update
-	body, err := json.Marshal(exp.factory.BuildUpdateMetricRequest(ctx, metric))
+func (exp *HTTPExporter) prepareRequest(ctx context.Context, metrics []domain.Metric) (*resty.Request, error) {
+	// http://<АДРЕС_СЕРВЕРА>/updates
+	body, err := json.Marshal(exp.factory.BuildUpdateBatchMetricRequest(ctx, metrics))
 	if err != nil {
 		return nil, err
 	}
 
 	req := exp.client.R().SetContext(ctx)
-	req.URL = fmt.Sprintf("http://%s/update", exp.address)
+	req.URL = fmt.Sprintf("http://%s/updates", exp.address)
 	req.Method = http.MethodPost
 	req.SetBody(body)
 	req.SetHeader("Content-Type", "application/json")

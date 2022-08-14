@@ -10,9 +10,9 @@ import (
 
 // MetricsRepository should store and retrieve metrics using backend storage
 type MetricsRepository interface {
-	Store(ctx context.Context, metric domain.Metric) error
+	Store(ctx context.Context, metrics ...domain.Metric) error
 	Get(ctx context.Context, name string) (m domain.Metric, found bool, err error)
-	List(ctx context.Context) ([]domain.Metric, error)
+	List(ctx context.Context, filter *domain.MetricsFilter) ([]domain.Metric, error)
 }
 
 // MetricsBackuper should be able to backup and restore metrics using long-term storage

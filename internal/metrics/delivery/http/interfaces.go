@@ -16,6 +16,7 @@ type MetricsRenderer interface {
 // MetricsService should be able to perform common operations on metrics, such as updating and retrieving
 type MetricsService interface {
 	Update(ctx context.Context, metric domain.Metric) (domain.Metric, error)
+	UpdateMany(ctx context.Context, metrics []domain.Metric) ([]domain.Metric, error)
 	Get(ctx context.Context, name string) (m domain.Metric, found bool, err error)
 	List(ctx context.Context) ([]domain.Metric, error)
 }
@@ -24,6 +25,8 @@ type MetricsService interface {
 type MetricsRequestResponseFactory interface {
 	BuildUpdateMetricRequest(ctx context.Context, metric domain.Metric) domain.UpdateMetricRequest
 	BuildUpdateMetricResponse(ctx context.Context, metric domain.Metric) domain.UpdateMetricResponse
+	BuildUpdateBatchMetricRequest(ctx context.Context, metrics []domain.Metric) []domain.UpdateMetricRequest
+	BuildUpdateBatchMetricResponse(ctx context.Context, metrics []domain.Metric) []domain.UpdateMetricResponse
 	BuildGetMetricResponse(ctx context.Context, metric domain.Metric) domain.GetMetricResponse
 }
 

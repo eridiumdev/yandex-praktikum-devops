@@ -52,12 +52,35 @@ func (s *metricsService) Update(ctx context.Context, metric domain.Metric) (doma
 	return metric, s.repo.Store(ctx, metric)
 }
 
+func (s *metricsService) UpdateMany(ctx context.Context, metrics []domain.Metric) ([]domain.Metric, error) {
+	names := make([]string, 0)
+	for _, metric := range metrics {
+		names = append(names, metric.Name)
+	}
+
+	existingMetrics, err := s.repo.List(ctx, &domain.MetricsFilter{Names: names})
+	if err != nil {
+		return metrics, err
+	}
+
+	for _, existingMetric := range existingMetrics {
+		for i := range metrics {
+			if existingMetric.IsCounter() {
+				// For counters, old value is added on top of new value
+				metrics[i].Counter += existingMetric.Counter
+				break
+			}
+		}
+	}
+	return metrics, s.repo.Store(ctx, metrics...)
+}
+
 func (s *metricsService) Get(ctx context.Context, name string) (domain.Metric, bool, error) {
 	return s.repo.Get(ctx, name)
 }
 
 func (s *metricsService) List(ctx context.Context) ([]domain.Metric, error) {
-	return s.repo.List(ctx)
+	return s.repo.List(ctx, nil)
 }
 
 func (s *metricsService) startDoingBackups(ctx context.Context, interval time.Duration) {
@@ -69,7 +92,7 @@ func (s *metricsService) startDoingBackups(ctx context.Context, interval time.Du
 			backupCycles++
 			logger.New(ctx).Debugf("[metrics service] backup cycle %d begins", backupCycles)
 
-			metrics, err := s.repo.List(ctx)
+			metrics, err := s.repo.List(ctx, nil)
 			if err != nil {
 				logger.New(ctx).Errorf("[metrics service] backup cycle %d failed, error: %s",
 					backupCycles, err.Error())

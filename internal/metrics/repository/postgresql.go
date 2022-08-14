@@ -17,9 +17,16 @@ import (
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
 )
 
+const (
+	StmtStoreMetrics = iota
+	StmtGetMetrics
+	StmtListMetrics
+)
+
 type postgresRepo struct {
-	db  *sql.DB
-	cfg config.DatabaseConfig
+	db    *sql.DB
+	cfg   config.DatabaseConfig
+	stmts map[int]*sql.Stmt
 }
 
 func NewPostgresRepo(ctx context.Context, cfg config.DatabaseConfig) (*postgresRepo, error) {
@@ -39,12 +46,12 @@ func NewPostgresRepo(ctx context.Context, cfg config.DatabaseConfig) (*postgresR
 
 	if cfg.MigrationsDir != "" {
 		// Run migrations
-		m, err := migrate.New(fmt.Sprintf("file://%s", cfg.MigrationsDir), cfg.DSN)
-		if err != nil {
-			return nil, err
+		m, migrateErr := migrate.New(fmt.Sprintf("file://%s", cfg.MigrationsDir), cfg.DSN)
+		if migrateErr != nil {
+			return nil, migrateErr
 		}
 
-		migrateErr := m.Up()
+		migrateErr = m.Up()
 		switch {
 		case migrateErr == nil:
 			logger.New(ctx).Infof("[postgres repo] migrations successfully applied")
@@ -54,10 +61,43 @@ func NewPostgresRepo(ctx context.Context, cfg config.DatabaseConfig) (*postgresR
 			return nil, migrateErr
 		}
 	}
+
+	stmts, err := initStatements(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+
 	return &postgresRepo{
-		db:  db,
-		cfg: cfg,
+		db:    db,
+		cfg:   cfg,
+		stmts: stmts,
 	}, nil
+}
+
+func initStatements(ctx context.Context, db *sql.DB) (map[int]*sql.Stmt, error) {
+	stmts := make(map[int]*sql.Stmt, 0)
+
+	storeMetrics, err := db.PrepareContext(ctx,
+		"INSERT INTO metrics (name, type, counter, gauge) VALUES ($1, $2, $3, $4)"+
+			" ON CONFLICT (name) DO UPDATE SET counter = excluded.counter, gauge = excluded.gauge")
+	if err != nil {
+		return nil, err
+	}
+	stmts[StmtStoreMetrics] = storeMetrics
+
+	getMetrics, err := db.PrepareContext(ctx, "SELECT name, type, counter, gauge FROM metrics WHERE name = $1")
+	if err != nil {
+		return nil, err
+	}
+	stmts[StmtGetMetrics] = getMetrics
+
+	listMetrics, err := db.PrepareContext(ctx, "SELECT name, type, counter, gauge FROM metrics ORDER BY id desc")
+	if err != nil {
+		return nil, err
+	}
+	stmts[StmtListMetrics] = listMetrics
+
+	return stmts, nil
 }
 
 func (r *postgresRepo) Ping(ctx context.Context) bool {
@@ -72,36 +112,61 @@ func (r *postgresRepo) Ping(ctx context.Context) bool {
 	return true
 }
 
-func (r *postgresRepo) Store(ctx context.Context, metric domain.Metric) error {
-	_, err := r.db.ExecContext(ctx, "INSERT INTO metrics (name, type, counter, gauge) VALUES ($1, $2, $3, $4)"+
-		"ON CONFLICT (name) DO UPDATE SET counter = excluded.counter, gauge = excluded.gauge",
-		metric.Name, metric.Type, metric.Counter, metric.Gauge)
+func (r *postgresRepo) Store(ctx context.Context, metrics ...domain.Metric) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
-	return err
-}
+	stmt := tx.StmtContext(ctx, r.stmts[StmtStoreMetrics])
 
-func (r *postgresRepo) Update(ctx context.Context, metric domain.Metric) error {
-	_, err := r.db.ExecContext(ctx, "UPDATE metrics SET counter = $1, gauge = $2 WHERE name = $3",
-		metric.Counter, metric.Gauge, metric.Name)
-
-	return err
+	for _, metric := range metrics {
+		if _, err := stmt.ExecContext(ctx, metric.Name, metric.Type, metric.Counter, metric.Gauge); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (r *postgresRepo) Get(ctx context.Context, name string) (domain.Metric, bool, error) {
 	var metric domain.Metric
 
-	err := r.db.QueryRowContext(ctx, "SELECT name, type, counter, gauge FROM metrics WHERE name = $1", name).
+	err := r.stmts[StmtGetMetrics].QueryRowContext(ctx, name).
 		Scan(&metric.Name, &metric.Type, &metric.Counter, &metric.Gauge)
+
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return metric, false, nil
 	}
 	return metric, err == nil, err
 }
 
-func (r *postgresRepo) List(ctx context.Context) ([]domain.Metric, error) {
+func (r *postgresRepo) List(ctx context.Context, filter *domain.MetricsFilter) ([]domain.Metric, error) {
 	metrics := make([]domain.Metric, 0)
 
-	rows, err := r.db.QueryContext(ctx, "SELECT name, type, counter, gauge FROM metrics ORDER BY id desc")
+	var rows *sql.Rows
+	var err error
+
+	if filter != nil && len(filter.Names) > 0 {
+		// Prepare args array (must have '[]any' type)
+		args := make([]any, 0)
+		// Build query with dynamic number of arguments
+		query := "SELECT name, type, counter, gauge FROM metrics WHERE name IN ("
+		for i, name := range filter.Names {
+			if i > 0 {
+				query += ","
+			}
+			query += fmt.Sprintf("$%d", i+1)
+			args = append(args, name)
+		}
+		query += ")"
+		rows, err = r.db.QueryContext(ctx, query, args...)
+	} else {
+		rows, err = r.stmts[StmtListMetrics].QueryContext(ctx)
+	}
+
 	if err != nil {
 		return metrics, err
 	}

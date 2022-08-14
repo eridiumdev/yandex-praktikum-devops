@@ -181,9 +181,10 @@ func TestGet(t *testing.T) {
 func TestList(t *testing.T) {
 	mutex := &sync.RWMutex{}
 	tests := []struct {
-		name string
-		repo *inMemRepo
-		want []domain.Metric
+		name   string
+		repo   *inMemRepo
+		filter *domain.MetricsFilter
+		want   []domain.Metric
 	}{
 		{
 			name: "get list from empty repo",
@@ -218,11 +219,27 @@ func TestList(t *testing.T) {
 				domain.NewGauge(domain.Alloc, 10.333),
 			},
 		},
+		{
+			name: "get list from non-empty repo, filter by name",
+			repo: &inMemRepo{
+				metrics: map[string]domain.Metric{
+					domain.PollCount: domain.NewCounter(domain.PollCount, 10),
+					domain.Alloc:     domain.NewGauge(domain.Alloc, 10.333),
+				},
+				mutex: mutex,
+			},
+			filter: &domain.MetricsFilter{
+				Names: []string{domain.PollCount},
+			},
+			want: []domain.Metric{
+				domain.NewCounter(domain.PollCount, 10),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			list, err := tt.repo.List(ctx)
+			list, err := tt.repo.List(ctx, tt.filter)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, tt.want, list)
 		})

@@ -34,6 +34,32 @@ func (f *requestResponseFactory) BuildUpdateMetricResponse(
 	}
 }
 
+func (f *requestResponseFactory) BuildUpdateBatchMetricRequest(
+	ctx context.Context,
+	metrics []domain.Metric,
+) []domain.UpdateMetricRequest {
+	req := make([]domain.UpdateMetricRequest, 0)
+	for _, metric := range metrics {
+		req = append(req, domain.UpdateMetricRequest{
+			GenericMetric: f.populateGenericMetric(ctx, metric),
+		})
+	}
+	return req
+}
+
+func (f *requestResponseFactory) BuildUpdateBatchMetricResponse(
+	ctx context.Context,
+	metrics []domain.Metric,
+) []domain.UpdateMetricResponse {
+	resp := make([]domain.UpdateMetricResponse, 0)
+	for _, metric := range metrics {
+		resp = append(resp, domain.UpdateMetricResponse{
+			GenericMetric: f.populateGenericMetric(ctx, metric),
+		})
+	}
+	return resp
+}
+
 func (f *requestResponseFactory) BuildGetMetricResponse(
 	ctx context.Context,
 	metric domain.Metric,

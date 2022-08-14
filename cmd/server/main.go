@@ -89,6 +89,7 @@ func main() {
 	router.AddRoute(http.MethodGet, "/", metricsHandler.List, middleware.BasicSet...)
 	router.AddRoute(http.MethodPost, "/value", metricsHandler.Get, middleware.ExtendedSet...)
 	router.AddRoute(http.MethodPost, "/update", metricsHandler.Update, middleware.ExtendedSet...)
+	router.AddRoute(http.MethodPost, "/updates", metricsHandler.UpdateBatch, middleware.ExtendedSet...)
 
 	monitoringHandler := monitoringHttpDelivery.NewMonitoringHandler(pingable...)
 	router.AddRoute(http.MethodGet, "/ping", monitoringHandler.Ping, middleware.BasicSet...)
