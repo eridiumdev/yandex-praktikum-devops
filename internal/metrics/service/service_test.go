@@ -84,6 +84,40 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
+func TestUpdateMany(t *testing.T) {
+	tests := []struct {
+		name    string
+		metrics []domain.Metric
+		want    []domain.Metric
+	}{
+		{
+			name: "update counter and gauge",
+			metrics: []domain.Metric{
+				domain.NewCounter(domain.PollCount, 10),
+				domain.NewGauge(domain.Alloc, 5.5),
+			},
+			want: []domain.Metric{
+				domain.NewCounter(domain.PollCount, 20),
+				domain.NewGauge(domain.Alloc, 5.5),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			repo := getDummyRepo()
+			backuper := getDummyBackuper()
+
+			service, err := NewMetricsService(ctx, repo, backuper, config.BackupConfig{})
+			require.NoError(t, err)
+
+			result, err := service.UpdateMany(ctx, tt.metrics)
+			require.NoError(t, err)
+			assert.ElementsMatch(t, tt.want, result)
+		})
+	}
+}
+
 func TestGet(t *testing.T) {
 	type Want struct {
 		metric domain.Metric

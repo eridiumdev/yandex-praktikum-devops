@@ -64,8 +64,8 @@ func (s *metricsService) UpdateMany(ctx context.Context, metrics []domain.Metric
 	}
 
 	for _, existingMetric := range existingMetrics {
-		for i := range metrics {
-			if existingMetric.IsCounter() {
+		for i, metric := range metrics {
+			if existingMetric.IsCounter() && metric.Name == existingMetric.Name {
 				// For counters, old value is added on top of new value
 				metrics[i].Counter += existingMetric.Counter
 				break
