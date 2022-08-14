@@ -95,10 +95,38 @@ func TestUpdateMany(t *testing.T) {
 			metrics: []domain.Metric{
 				domain.NewCounter(domain.PollCount, 10),
 				domain.NewGauge(domain.Alloc, 5.5),
+				domain.NewGauge(domain.RandomValue, 3.4),
 			},
 			want: []domain.Metric{
 				domain.NewCounter(domain.PollCount, 20),
 				domain.NewGauge(domain.Alloc, 5.5),
+				domain.NewGauge(domain.RandomValue, 3.4),
+			},
+		},
+		{
+			name: "update same counter",
+			metrics: []domain.Metric{
+				domain.NewCounter(domain.PollCount, 5),
+				domain.NewCounter(domain.PollCount, 10),
+				domain.NewGauge(domain.RandomValue, 3.4),
+				domain.NewCounter(domain.PollCount, 15),
+			},
+			want: []domain.Metric{
+				domain.NewCounter(domain.PollCount, 40),
+				domain.NewGauge(domain.RandomValue, 3.4),
+			},
+		},
+		{
+			name: "update same gauge",
+			metrics: []domain.Metric{
+				domain.NewGauge(domain.Alloc, 5.5),
+				domain.NewGauge(domain.Alloc, 6.6),
+				domain.NewGauge(domain.RandomValue, 3.4),
+				domain.NewGauge(domain.Alloc, 7.7),
+			},
+			want: []domain.Metric{
+				domain.NewGauge(domain.Alloc, 7.7),
+				domain.NewGauge(domain.RandomValue, 3.4),
 			},
 		},
 	}

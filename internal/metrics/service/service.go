@@ -53,6 +53,11 @@ func (s *metricsService) Update(ctx context.Context, metric domain.Metric) (doma
 }
 
 func (s *metricsService) UpdateMany(ctx context.Context, metrics []domain.Metric) ([]domain.Metric, error) {
+	// Merge metrics with the same name into one
+	// For counters, their values will be summed up
+	// For gauges, the last value will be taken
+	metrics = s.mergeIdenticalMetrics(metrics)
+
 	names := make([]string, 0)
 	for _, metric := range metrics {
 		names = append(names, metric.Name)
@@ -81,6 +86,33 @@ func (s *metricsService) Get(ctx context.Context, name string) (domain.Metric, b
 
 func (s *metricsService) List(ctx context.Context) ([]domain.Metric, error) {
 	return s.repo.List(ctx, nil)
+}
+
+func (s *metricsService) mergeIdenticalMetrics(metrics []domain.Metric) []domain.Metric {
+	resultMap := make(map[string]domain.Metric, 0)
+
+	for i := 0; i < len(metrics); i++ {
+		if _, ok := resultMap[metrics[i].Name]; ok {
+			// Metric already set and merged
+			continue
+		}
+		// Set metric
+		resultMap[metrics[i].Name] = metrics[i]
+		// Merge metric with any possible other metrics (with the same Name)
+		for j := i + 1; j < len(metrics); j++ {
+			if metrics[i].Name == metrics[j].Name {
+				metrics[i].Counter += metrics[j].Counter
+				metrics[i].Gauge = metrics[j].Gauge
+				resultMap[metrics[i].Name] = metrics[i]
+			}
+		}
+	}
+
+	resultSlice := make([]domain.Metric, 0)
+	for _, metric := range resultMap {
+		resultSlice = append(resultSlice, metric)
+	}
+	return resultSlice
 }
 
 func (s *metricsService) startDoingBackups(ctx context.Context, interval time.Duration) {
