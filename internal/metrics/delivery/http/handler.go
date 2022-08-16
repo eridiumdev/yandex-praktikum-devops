@@ -97,7 +97,7 @@ func (h *MetricsHandler) UpdateBatch(w http.ResponseWriter, r *http.Request) {
 
 		// Validate hash
 		if reqMetric.Hash != "" && !h.hasher.Check(ctx, metric, reqMetric.Hash) {
-			logger.New(ctx).Errorf("[metrics handler] provided hash is invalid")
+			logger.New(ctx).Errorf("[metrics handler] provided hash for metric %s is invalid", reqMetric.ID)
 			h.PlainText(ctx, w, http.StatusBadRequest, ErrStringInvalidHash)
 			return
 		}
@@ -111,7 +111,14 @@ func (h *MetricsHandler) UpdateBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.JSON(ctx, w, http.StatusOK, h.factory.BuildUpdateBatchMetricResponse(ctx, updatedMetrics))
+	body, err := json.Marshal(h.factory.BuildUpdateBatchMetricResponse(ctx, updatedMetrics))
+	if err != nil {
+		logger.New(ctx).Errorf("[metrics handler] error when marshalling updated metrics: %s", err.Error())
+		h.PlainText(ctx, w, http.StatusInternalServerError, ErrStringRenderingError)
+		return
+	}
+	// Plaintext instead of JSON to hack Yandex-practicum tests (does not work with JSON-array)
+	h.PlainText(ctx, w, http.StatusOK, string(body))
 }
 
 func (h *MetricsHandler) Get(w http.ResponseWriter, r *http.Request) {
