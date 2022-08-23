@@ -12,6 +12,10 @@ type Metric struct {
 	Gauge   Gauge
 }
 
+type MetricsFilter struct {
+	Names []string
+}
+
 func (m Metric) StringValue() string {
 	switch m.Type {
 	case TypeCounter:

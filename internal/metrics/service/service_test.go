@@ -15,8 +15,9 @@ import (
 
 func getDummyRepo() MetricsRepository {
 	repo := repository.NewInMemRepo()
-	repo.Store(domain.NewCounter(domain.PollCount, 10))
-	repo.Store(domain.NewGauge(domain.Alloc, 10.333))
+	ctx := context.Background()
+	_ = repo.Store(ctx, domain.NewCounter(domain.PollCount, 10))
+	_ = repo.Store(ctx, domain.NewGauge(domain.Alloc, 10.333))
 	return repo
 }
 
@@ -75,9 +76,72 @@ func TestUpdate(t *testing.T) {
 			var result domain.Metric
 
 			for _, update := range tt.updates {
-				result, _ = service.Update(update)
+				result, err = service.Update(ctx, update)
+				require.NoError(t, err)
 			}
 			assert.Equal(t, tt.want, result)
+		})
+	}
+}
+
+func TestUpdateMany(t *testing.T) {
+	tests := []struct {
+		name    string
+		metrics []domain.Metric
+		want    []domain.Metric
+	}{
+		{
+			name: "update counter and gauge",
+			metrics: []domain.Metric{
+				domain.NewCounter(domain.PollCount, 10),
+				domain.NewGauge(domain.Alloc, 5.5),
+				domain.NewGauge(domain.RandomValue, 3.4),
+			},
+			want: []domain.Metric{
+				domain.NewCounter(domain.PollCount, 20),
+				domain.NewGauge(domain.Alloc, 5.5),
+				domain.NewGauge(domain.RandomValue, 3.4),
+			},
+		},
+		{
+			name: "update same counter",
+			metrics: []domain.Metric{
+				domain.NewCounter(domain.PollCount, 5),
+				domain.NewCounter(domain.PollCount, 10),
+				domain.NewGauge(domain.RandomValue, 3.4),
+				domain.NewCounter(domain.PollCount, 15),
+			},
+			want: []domain.Metric{
+				domain.NewCounter(domain.PollCount, 40),
+				domain.NewGauge(domain.RandomValue, 3.4),
+			},
+		},
+		{
+			name: "update same gauge",
+			metrics: []domain.Metric{
+				domain.NewGauge(domain.Alloc, 5.5),
+				domain.NewGauge(domain.Alloc, 6.6),
+				domain.NewGauge(domain.RandomValue, 3.4),
+				domain.NewGauge(domain.Alloc, 7.7),
+			},
+			want: []domain.Metric{
+				domain.NewGauge(domain.Alloc, 7.7),
+				domain.NewGauge(domain.RandomValue, 3.4),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			repo := getDummyRepo()
+			backuper := getDummyBackuper()
+
+			service, err := NewMetricsService(ctx, repo, backuper, config.BackupConfig{})
+			require.NoError(t, err)
+
+			result, err := service.UpdateMany(ctx, tt.metrics)
+			require.NoError(t, err)
+			assert.ElementsMatch(t, tt.want, result)
 		})
 	}
 }
@@ -118,7 +182,8 @@ func TestGet(t *testing.T) {
 			service, err := NewMetricsService(ctx, repo, backuper, config.BackupConfig{})
 			require.NoError(t, err)
 
-			metric, found := service.Get(tt.mName)
+			metric, found, err := service.Get(ctx, tt.mName)
+			require.NoError(t, err)
 			assert.Equal(t, tt.want.metric, metric)
 			assert.Equal(t, tt.want.found, found)
 		})
@@ -153,7 +218,8 @@ func TestList(t *testing.T) {
 			service, err := NewMetricsService(ctx, tt.repo, backuper, config.BackupConfig{})
 			require.NoError(t, err)
 
-			list := service.List()
+			list, err := service.List(ctx)
+			require.NoError(t, err)
 			assert.ElementsMatch(t, tt.want, list)
 		})
 	}

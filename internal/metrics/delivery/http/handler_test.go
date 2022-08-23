@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -18,6 +18,7 @@ import (
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/routing"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/backup"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/domain"
+	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/hash"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/repository"
 	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/service"
 )
@@ -40,10 +41,19 @@ func getDummyRenderer() *dummyRenderer {
 	return &dummyRenderer{}
 }
 
+func getDummyHasher() MetricsHasher {
+	return hash.NewHasher("s3cr3t-k3y")
+}
+
+func getDummyFactory() MetricsRequestResponseFactory {
+	return NewRequestResponseFactory(getDummyHasher())
+}
+
 func getDummyRepo() service.MetricsRepository {
 	r := repository.NewInMemRepo()
-	r.Store(domain.NewCounter(domain.PollCount, 5))
-	r.Store(domain.NewGauge(domain.Alloc, 10.123))
+	ctx := context.Background()
+	_ = r.Store(ctx, domain.NewCounter(domain.PollCount, 5))
+	_ = r.Store(ctx, domain.NewGauge(domain.Alloc, 10.123))
 	return r
 }
 
@@ -83,7 +93,7 @@ func runTests(t *testing.T, tt TestCase) {
 		DoRestore: false,
 	})
 
-	h := NewMetricsHandler(svc, getDummyRenderer())
+	h := NewMetricsHandler(svc, getDummyRenderer(), getDummyFactory(), getDummyHasher())
 	router.AddRoute(http.MethodGet, "/", h.List)
 	router.AddRoute(http.MethodPost, "/value", h.Get)
 	router.AddRoute(http.MethodPost, "/update", h.Update)
@@ -100,7 +110,7 @@ func runTests(t *testing.T, tt TestCase) {
 	resp, doErr := http.DefaultClient.Do(req)
 	require.NoError(t, doErr)
 
-	body, readErr := ioutil.ReadAll(resp.Body)
+	body, readErr := io.ReadAll(resp.Body)
 	require.NoError(t, readErr)
 	defer resp.Body.Close()
 
@@ -123,7 +133,7 @@ func TestUpdate(t *testing.T) {
 			body:   `{"id":"PollCount","type":"counter","delta":5}`,
 			want: Want{
 				code:        http.StatusOK,
-				response:    `{"id":"PollCount","type":"counter","delta":10}`,
+				response:    `{"id":"PollCount","type":"counter","delta":10,"hash":"953f4bbe05b8225241fbe00f63f2d84ae756165a81b25f89d96436c64f374793"}`,
 				contentType: "application/json; charset=utf-8",
 			},
 		},
@@ -134,8 +144,41 @@ func TestUpdate(t *testing.T) {
 			body:   `{"id":"Alloc","type":"gauge","value":10.20}`,
 			want: Want{
 				code:        http.StatusOK,
-				response:    `{"id":"Alloc","type":"gauge","value":10.2}`,
+				response:    `{"id":"Alloc","type":"gauge","value":10.2,"hash":"380f160a870d57bafccffae49443dd8d227c806485c2b4b80bcfaf96f19447b3"}`,
 				contentType: "application/json; charset=utf-8",
+			},
+		},
+		{
+			name:   "positive test: counter with hash",
+			url:    "/update",
+			method: http.MethodPost,
+			body:   `{"id":"PollCount","type":"counter","delta":5,"hash":"7148ff92910a879bba42647839901cdd4f9c68f952657e36ead4e894511d82af"}`,
+			want: Want{
+				code:        http.StatusOK,
+				response:    `{"id":"PollCount","type":"counter","delta":10,"hash":"953f4bbe05b8225241fbe00f63f2d84ae756165a81b25f89d96436c64f374793"}`,
+				contentType: "application/json; charset=utf-8",
+			},
+		},
+		{
+			name:   "positive test: gauge with hash",
+			url:    "/update",
+			method: http.MethodPost,
+			body:   `{"id":"Alloc","type":"gauge","value":10.20,"hash":"380f160a870d57bafccffae49443dd8d227c806485c2b4b80bcfaf96f19447b3"}`,
+			want: Want{
+				code:        http.StatusOK,
+				response:    `{"id":"Alloc","type":"gauge","value":10.2,"hash":"380f160a870d57bafccffae49443dd8d227c806485c2b4b80bcfaf96f19447b3"}`,
+				contentType: "application/json; charset=utf-8",
+			},
+		},
+		{
+			name:   "negative test: bad hash",
+			url:    "/update",
+			method: http.MethodPost,
+			body:   `{"id":"PollCount","type":"counter","delta":5,"hash":"-"}`,
+			want: Want{
+				code:        http.StatusBadRequest,
+				response:    ErrStringInvalidHash,
+				contentType: "text/plain; charset=utf-8",
 			},
 		},
 		{
@@ -210,7 +253,7 @@ func TestGet(t *testing.T) {
 			method: http.MethodPost,
 			want: Want{
 				code:        http.StatusOK,
-				response:    `{"id":"PollCount","type":"counter","delta":5}`,
+				response:    `{"id":"PollCount","type":"counter","delta":5,"hash":"7148ff92910a879bba42647839901cdd4f9c68f952657e36ead4e894511d82af"}`,
 				contentType: "application/json; charset=utf-8",
 			},
 		},
@@ -221,7 +264,7 @@ func TestGet(t *testing.T) {
 			body:   `{"id":"Alloc","type":"gauge"}`,
 			want: Want{
 				code:        http.StatusOK,
-				response:    `{"id":"Alloc","type":"gauge","value":10.123}`,
+				response:    `{"id":"Alloc","type":"gauge","value":10.123,"hash":"7e9e3da35d6b5e7bd5b2458f14fd54f566cfeb0e5b192cc220a08cf0b42f14a3"}`,
 				contentType: "application/json; charset=utf-8",
 			},
 		},

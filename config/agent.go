@@ -16,6 +16,8 @@ type AgentConfig struct {
 
 	RandomExporter RandomExporterConfig `envPrefix:"RANDOM_EXPORTER_"`
 	HTTPExporter   HTTPExporterConfig
+
+	HashKey string `env:"KEY"`
 }
 
 type RandomExporterConfig struct {
@@ -35,6 +37,7 @@ func LoadAgentConfig() (*AgentConfig, error) {
 	flag.DurationVar(&cfg.CollectInterval, "p", 2*time.Second, "metrics collect/poll interval")
 	flag.DurationVar(&cfg.ExportInterval, "r", 10*time.Second, "metrics export/report interval")
 	flag.StringVar(&cfg.HTTPExporter.Address, "a", "localhost:8080", "HTTP exporter target address")
+	flag.StringVar(&cfg.HashKey, "k", "", "Hash key for signing metrics data")
 
 	parseLoggerConfigFlags(&cfg.Logger)
 

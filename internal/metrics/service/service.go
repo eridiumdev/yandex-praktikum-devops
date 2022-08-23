@@ -26,35 +26,93 @@ func NewMetricsService(
 		repo:     repo,
 		backuper: backuper,
 	}
-	if backupCfg.DoRestore {
-		err := s.restoreFromLastBackup(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to restore from backup")
+	if backuper != nil {
+		if backupCfg.DoRestore {
+			err := s.restoreFromLastBackup(ctx)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to restore from backup")
+			}
 		}
-	}
-	if backupCfg.Interval > 0 {
-		go s.startDoingBackups(ctx, backupCfg.Interval)
+		if backupCfg.Interval > 0 {
+			go s.startDoingBackups(ctx, backupCfg.Interval)
+		}
 	}
 	return s, nil
 }
 
-func (s *metricsService) Update(metric domain.Metric) (updated domain.Metric, changed bool) {
-	existingMetric, found := s.repo.Get(metric.Name)
+func (s *metricsService) Update(ctx context.Context, metric domain.Metric) (domain.Metric, error) {
+	existingMetric, found, err := s.repo.Get(ctx, metric.Name)
+	if err != nil {
+		return metric, err
+	}
 	if found && metric.IsCounter() {
 		// For counters, old value is added on top of new value
 		metric.Counter += existingMetric.Counter
 	}
-	s.repo.Store(metric)
-	return metric, metric != existingMetric
+	return metric, s.repo.Store(ctx, metric)
 }
 
-func (s *metricsService) Get(name string) (metric domain.Metric, found bool) {
-	metric, found = s.repo.Get(name)
-	return
+func (s *metricsService) UpdateMany(ctx context.Context, metrics []domain.Metric) ([]domain.Metric, error) {
+	// Merge metrics with the same name into one
+	// For counters, their values will be summed up
+	// For gauges, the last value will be taken
+	metrics = s.mergeIdenticalMetrics(metrics)
+
+	names := make([]string, 0)
+	for _, metric := range metrics {
+		names = append(names, metric.Name)
+	}
+
+	existingMetrics, err := s.repo.List(ctx, &domain.MetricsFilter{Names: names})
+	if err != nil {
+		return metrics, err
+	}
+
+	for _, existingMetric := range existingMetrics {
+		for i, metric := range metrics {
+			if existingMetric.IsCounter() && metric.Name == existingMetric.Name {
+				// For counters, old value is added on top of new value
+				metrics[i].Counter += existingMetric.Counter
+				break
+			}
+		}
+	}
+	return metrics, s.repo.Store(ctx, metrics...)
 }
 
-func (s *metricsService) List() []domain.Metric {
-	return s.repo.List()
+func (s *metricsService) Get(ctx context.Context, name string) (domain.Metric, bool, error) {
+	return s.repo.Get(ctx, name)
+}
+
+func (s *metricsService) List(ctx context.Context) ([]domain.Metric, error) {
+	return s.repo.List(ctx, nil)
+}
+
+func (s *metricsService) mergeIdenticalMetrics(metrics []domain.Metric) []domain.Metric {
+	resultMap := make(map[string]domain.Metric, 0)
+
+	for i := 0; i < len(metrics); i++ {
+		if _, ok := resultMap[metrics[i].Name]; ok {
+			// Metric already set and merged
+			continue
+		}
+		// Set metric
+		resultMap[metrics[i].Name] = metrics[i]
+		// Merge metric with any possible other metrics (with the same Name)
+		for j := i + 1; j < len(metrics); j++ {
+			if metrics[i].Name == metrics[j].Name {
+				metrics[i].Counter += metrics[j].Counter
+				metrics[i].Gauge = metrics[j].Gauge
+				resultMap[metrics[i].Name] = metrics[i]
+			}
+		}
+	}
+
+	resultSlice := make([]domain.Metric, 0)
+	for _, metric := range resultMap {
+		resultSlice = append(resultSlice, metric)
+	}
+	return resultSlice
 }
 
 func (s *metricsService) startDoingBackups(ctx context.Context, interval time.Duration) {
@@ -65,11 +123,23 @@ func (s *metricsService) startDoingBackups(ctx context.Context, interval time.Du
 		case <-ticker.C:
 			backupCycles++
 			logger.New(ctx).Debugf("[metrics service] backup cycle %d begins", backupCycles)
-			metrics := s.repo.List()
-			if err := s.backuper.Backup(metrics); err == nil {
-				logger.New(ctx).Debugf("[metrics service] backup cycle %d successful, metrics count = %d",
-					backupCycles, len(metrics))
+
+			metrics, err := s.repo.List(ctx, nil)
+			if err != nil {
+				logger.New(ctx).Errorf("[metrics service] backup cycle %d failed, error: %s",
+					backupCycles, err.Error())
+				continue
 			}
+
+			err = s.backuper.Backup(metrics)
+			if err != nil {
+				logger.New(ctx).Errorf("[metrics service] backup cycle %d failed, error: %s",
+					backupCycles, err.Error())
+				continue
+			}
+			logger.New(ctx).Debugf("[metrics service] backup cycle %d successful, metrics count = %d",
+				backupCycles, len(metrics))
+
 		case <-ctx.Done():
 			logger.New(ctx).Debugf("[metrics service] context cancelled, stopped doing backups")
 			return
@@ -82,10 +152,14 @@ func (s *metricsService) restoreFromLastBackup(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	logger.New(ctx).Debugf("[metrics service] successfully restored %d metrics from backup", len(metrics))
+	logger.New(ctx).Infof("[metrics service] restored %d metrics from backup, applying to repo...", len(metrics))
 
 	for _, metric := range metrics {
-		s.repo.Store(metric)
+		err = s.repo.Store(ctx, metric)
+		if err != nil {
+			return err
+		}
 	}
+	logger.New(ctx).Infof("[metrics service] %d metrics from backup restored to repository", len(metrics))
 	return nil
 }
