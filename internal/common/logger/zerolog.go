@@ -2,10 +2,12 @@ package logger
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 
 	"eridiumdev/yandex-praktikum-go-devops/config"
@@ -28,23 +30,35 @@ func InitZerolog(ctx context.Context, cfg config.LoggerConfig) context.Context {
 	return log.Logger.WithContext(ctx)
 }
 
+func ContextFromRequest(r *http.Request) context.Context {
+	ctx := r.Context()
+	if requestID, ok := hlog.IDFromRequest(r); ok {
+		log.Ctx(ctx).With().Bytes("request_id", requestID.Bytes())
+	}
+	return ctx
+}
+
 func (m *message) Fatalf(format string, v ...interface{}) {
-	getZerologLogger(m.ctx).Fatal().Fields(m.fields).Msgf(format, v...)
+	m.getZerologLogger(m.ctx).Fatal().Fields(m.fields).Msgf(format, v...)
 }
 
 func (m *message) Errorf(format string, v ...interface{}) {
-	getZerologLogger(m.ctx).Error().Fields(m.fields).Msgf(format, v...)
+	m.getZerologLogger(m.ctx).Error().Fields(m.fields).Msgf(format, v...)
+}
+
+func (m *message) Warnf(format string, v ...interface{}) {
+	m.getZerologLogger(m.ctx).Warn().Fields(m.fields).Msgf(format, v...)
 }
 
 func (m *message) Infof(format string, v ...interface{}) {
-	getZerologLogger(m.ctx).Info().Fields(m.fields).Msgf(format, v...)
+	m.getZerologLogger(m.ctx).Info().Fields(m.fields).Msgf(format, v...)
 }
 
 func (m *message) Debugf(format string, v ...interface{}) {
-	getZerologLogger(m.ctx).Debug().Fields(m.fields).Msgf(format, v...)
+	m.getZerologLogger(m.ctx).Debug().Fields(m.fields).Msgf(format, v...)
 }
 
-func getZerologLogger(ctx context.Context) *zerolog.Logger {
+func (m *message) getZerologLogger(ctx context.Context) *zerolog.Logger {
 	logger := log.Ctx(ctx)
 	if logger.GetLevel() == zerolog.Disabled {
 		return &log.Logger

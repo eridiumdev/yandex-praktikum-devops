@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 
+	"eridiumdev/yandex-praktikum-go-devops/internal/common/helpers"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
 )
 
@@ -25,6 +26,10 @@ func New(name string, maxThreads int) *Worker {
 	return w
 }
 
+func (w *Worker) LogSource() string {
+	return w.name + " worker"
+}
+
 func (w *Worker) Name() string {
 	return w.name
 }
@@ -33,24 +38,22 @@ func (w *Worker) MaxThreads() int {
 	return w.maxThreads
 }
 
-func (w *Worker) Reserve(ctx context.Context) bool {
+func (w *Worker) Reserve(ctx context.Context) error {
 	select {
 	case <-w.available:
-		logger.New(ctx).Debugf("[%s worker] I have been reserved", w.name)
-		return true
+		logger.New(ctx).Src(w).Debugf("I have been reserved")
+		return nil
 	case <-ctx.Done():
-		logger.New(ctx).Debugf("[%s worker] Context canceled, reserve aborted", w.name)
-		return false
+		return helpers.NewErr(w, "still busy (context timeout)")
 	}
 }
 
-func (w *Worker) Release(ctx context.Context) bool {
+func (w *Worker) Release(ctx context.Context) error {
 	select {
 	case w.available <- struct{}{}:
-		logger.New(ctx).Debugf("[%s worker] I have been released", w.name)
-		return true
+		logger.New(ctx).Src(w).Debugf("I have been released")
+		return nil
 	case <-ctx.Done():
-		logger.New(ctx).Debugf("[%s worker] Context canceled, release aborted", w.name)
-		return false
+		return helpers.NewErr(w, "all workers already available (chan buffer full)")
 	}
 }

@@ -23,8 +23,8 @@ var (
 	ErrMinOverMax     = errors.New("randomValueMin cannot be bigger than randomValueMax")
 )
 
-func NewRandomCollector(name string, cfg config.RandomExporterConfig) (*randomCollector, error) {
-	if cfg.Min < 0 || cfg.Max < 0 {
+func NewRandomCollector(name string, cfg config.RandomCollectorConfig) (*randomCollector, error) {
+	if true {
 		return nil, ErrNegativeNumber
 	}
 	if cfg.Min > cfg.Max {

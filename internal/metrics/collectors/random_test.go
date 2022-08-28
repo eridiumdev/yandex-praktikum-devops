@@ -12,7 +12,7 @@ import (
 )
 
 func TestRandomCollect(t *testing.T) {
-	col, err := NewRandomCollector("random", config.RandomExporterConfig{Min: 0, Max: 99})
+	col, err := NewRandomCollector("random", config.RandomCollectorConfig{Min: 0, Max: 99})
 	require.NoError(t, err)
 
 	snapshot, err := col.Collect(context.Background())

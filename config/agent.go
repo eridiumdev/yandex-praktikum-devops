@@ -14,13 +14,13 @@ type AgentConfig struct {
 	ExportInterval  time.Duration `env:"REPORT_INTERVAL"`
 	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT" envDefault:"3s"`
 
-	RandomExporter RandomExporterConfig `envPrefix:"RANDOM_EXPORTER_"`
-	HTTPExporter   HTTPExporterConfig
+	RandomCollector RandomCollectorConfig `envPrefix:"RANDOM_COLLECTOR_"`
+	HTTPExporter    HTTPExporterConfig
 
 	HashKey string `env:"KEY"`
 }
 
-type RandomExporterConfig struct {
+type RandomCollectorConfig struct {
 	Min int `env:"MIN" envDefault:"0"`
 	Max int `env:"MAX" envDefault:"9999"`
 }

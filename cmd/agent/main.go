@@ -11,11 +11,6 @@ import (
 	"eridiumdev/yandex-praktikum-go-devops/config"
 	"eridiumdev/yandex-praktikum-go-devops/internal/agent"
 	"eridiumdev/yandex-praktikum-go-devops/internal/common/logger"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/buffering"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/collectors"
-	delivery "eridiumdev/yandex-praktikum-go-devops/internal/metrics/delivery/http"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/exporters"
-	"eridiumdev/yandex-praktikum-go-devops/internal/metrics/hash"
 )
 
 func main() {
@@ -35,40 +30,16 @@ func main() {
 	// Modify context with cancel func for graceful shutdown
 	ctx, cancel := context.WithCancel(ctx)
 
-	// Init buffer for metrics
-	metricsBuffer := buffering.NewInMemBuffer()
-
 	// Init agent app
-	app := agent.NewAgent(cfg, metricsBuffer)
-
-	// Init collectors
-	runtimeCollector := collectors.NewRuntimeCollector("runtime")
-	pollCountCollector := collectors.NewPollCountCollector("poll-count")
-	randomCollector, err := collectors.NewRandomCollector("random", cfg.RandomExporter)
+	agentCtx := logger.Enrich(ctx, logger.FieldComponent, "agent")
+	app, err := agent.NewApp(agentCtx, cfg)
 	if err != nil {
-		logger.New(ctx).Fatalf("Cannot start random collector: %s", err.Error())
+		logger.New(ctx).Err(err).Fatalf("Cannot init agent")
 	}
+	logger.New(ctx).Infof("Agent init successful")
 
-	// Provide collectors to agent
-	app.AddCollector(runtimeCollector)
-	app.AddCollector(pollCountCollector)
-	app.AddCollector(randomCollector)
-
-	// Init auxiliary components
-	hasher := hash.NewHasher(cfg.HashKey)
-	requestResponseFactory := delivery.NewRequestResponseFactory(hasher)
-
-	// Init exporters
-	httpExporter := exporters.NewHTTPExporter("http", requestResponseFactory, cfg.HTTPExporter)
-	app.AddExporter(httpExporter)
-
-	// Start agent
-	go app.StartCollecting(ctx)
-	// Wait one collectInterval before running first export
-	time.AfterFunc(cfg.CollectInterval, func() {
-		app.StartExporting(ctx)
-	})
-	logger.New(ctx).Infof("Agent started")
+	// Run the app
+	go app.Run(agentCtx)
 
 	// Handle OS signals for graceful shutdown
 	quit := make(chan os.Signal, 1)
@@ -83,6 +54,6 @@ func main() {
 
 	// Call cancel function and stop the agent
 	cancel()
-	app.Stop(ctx)
+	app.Stop(agentCtx)
 	logger.New(ctx).Infof("Agent stopped")
 }
