@@ -94,21 +94,19 @@ func TestStoreWithRaceCondition(t *testing.T) {
 	repo := NewInMemRepo()
 	metric := domain.NewCounter(domain.PollCount, 1)
 
-	done := make(chan int)
+	count := 1000
+	wg := sync.WaitGroup{}
+	wg.Add(count)
+
 	ctx := context.Background()
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < count; i++ {
 		go func() {
 			_ = repo.Store(ctx, metric)
-			done <- 1
+			wg.Done()
 		}()
 	}
-	threadsDone := 0
-	for range done {
-		threadsDone++
-		if threadsDone == 1000 {
-			break
-		}
-	}
+	wg.Wait()
+
 	result, found, err := repo.Get(ctx, metric.Name)
 	require.NoError(t, err)
 	assert.True(t, found)

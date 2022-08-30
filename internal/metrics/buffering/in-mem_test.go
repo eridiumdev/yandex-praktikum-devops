@@ -82,20 +82,18 @@ func TestBuffer(t *testing.T) {
 func TestBufferWithRaceCondition(t *testing.T) {
 	buffer := NewInMemBuffer()
 
-	done := make(chan int)
-	for i := 0; i < 1000; i++ {
+	count := 1000
+	wg := sync.WaitGroup{}
+	wg.Add(count)
+
+	for i := 0; i < count; i++ {
 		go func() {
 			buffer.Buffer([]domain.Metric{domain.NewCounter(domain.PollCount, 1)})
-			done <- 1
+			wg.Done()
 		}()
 	}
-	threadsDone := 0
-	for range done {
-		threadsDone++
-		if threadsDone == 1000 {
-			break
-		}
-	}
+	wg.Wait()
+
 	result := buffer.Retrieve()
 	assert.Equal(t, domain.Counter(1000), result[0].Counter)
 }
