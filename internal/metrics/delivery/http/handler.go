@@ -113,7 +113,7 @@ func (h *MetricsHandler) UpdateBatch(w http.ResponseWriter, r *http.Request) {
 
 	body, err := json.Marshal(h.factory.BuildUpdateBatchMetricResponse(ctx, updatedMetrics))
 	if err != nil {
-		logger.New(ctx).Errorf("[metrics handler] error when marshalling updated metrics: %s", err.Error())
+		logger.New(ctx).Errorf("[metrics handler] error when marshaling updated metrics: %s", err.Error())
 		h.PlainText(ctx, w, http.StatusInternalServerError, ErrStringRenderingError)
 		return
 	}

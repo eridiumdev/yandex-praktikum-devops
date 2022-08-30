@@ -10,11 +10,13 @@ require (
 	github.com/jackc/pgx/v4 v4.17.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.27.0
+	github.com/shirou/gopsutil/v3 v3.22.7
 	github.com/stretchr/testify v1.8.0
 )
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
@@ -25,10 +27,15 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
 	github.com/jackc/pgtype v1.12.0 // indirect
 	github.com/lib/pq v1.10.2 // indirect
+	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/rs/xid v1.3.0 // indirect
+	github.com/tklauser/go-sysconf v0.3.10 // indirect
+	github.com/tklauser/numcpus v0.4.0 // indirect
+	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
 	golang.org/x/net v0.0.0-20220728211354-c7608f3a8462 // indirect
