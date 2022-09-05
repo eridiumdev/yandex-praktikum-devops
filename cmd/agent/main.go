@@ -48,11 +48,13 @@ func main() {
 	if err != nil {
 		logger.New(ctx).Fatalf("Cannot start random collector: %s", err.Error())
 	}
+	gopsutilCollector := collectors.NewGopsutilCollector("gopsutil")
 
 	// Provide collectors to agent
 	app.AddCollector(runtimeCollector)
 	app.AddCollector(pollCountCollector)
 	app.AddCollector(randomCollector)
+	app.AddCollector(gopsutilCollector)
 
 	// Init auxiliary components
 	hasher := hash.NewHasher(cfg.HashKey)

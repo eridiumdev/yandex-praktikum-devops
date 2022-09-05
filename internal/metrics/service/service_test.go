@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -82,6 +83,34 @@ func TestUpdate(t *testing.T) {
 			assert.Equal(t, tt.want, result)
 		})
 	}
+}
+
+func TestUpdateWithRaceCondition(t *testing.T) {
+	ctx := context.Background()
+	repo := repository.NewInMemRepo()
+	backuper := getDummyBackuper()
+
+	service, err := NewMetricsService(ctx, repo, backuper, config.BackupConfig{})
+	require.NoError(t, err)
+
+	count := 1000
+
+	wg := sync.WaitGroup{}
+	wg.Add(count)
+
+	for i := 0; i < count; i++ {
+		go func() {
+			_, _ = service.Update(ctx, domain.NewCounter(domain.PollCount, 1))
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+
+	metric, found, err := service.Get(ctx, domain.PollCount)
+
+	require.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, count, int(metric.Counter))
 }
 
 func TestUpdateMany(t *testing.T) {

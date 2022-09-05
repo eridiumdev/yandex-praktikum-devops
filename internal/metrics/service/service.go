@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -12,8 +13,9 @@ import (
 )
 
 type metricsService struct {
-	repo     MetricsRepository
-	backuper MetricsBackuper
+	repo        MetricsRepository
+	backuper    MetricsBackuper
+	updateMutex *sync.Mutex
 }
 
 func NewMetricsService(
@@ -23,8 +25,9 @@ func NewMetricsService(
 	backupCfg config.BackupConfig,
 ) (*metricsService, error) {
 	s := &metricsService{
-		repo:     repo,
-		backuper: backuper,
+		repo:        repo,
+		backuper:    backuper,
+		updateMutex: &sync.Mutex{},
 	}
 	if backuper != nil {
 		if backupCfg.DoRestore {
@@ -41,6 +44,12 @@ func NewMetricsService(
 }
 
 func (s *metricsService) Update(ctx context.Context, metric domain.Metric) (domain.Metric, error) {
+	if metric.Type == domain.TypeCounter {
+		// Enforce atomicity for counter updates
+		s.updateMutex.Lock()
+		defer s.updateMutex.Unlock()
+	}
+
 	existingMetric, found, err := s.repo.Get(ctx, metric.Name)
 	if err != nil {
 		return metric, err
@@ -59,8 +68,18 @@ func (s *metricsService) UpdateMany(ctx context.Context, metrics []domain.Metric
 	metrics = s.mergeIdenticalMetrics(metrics)
 
 	names := make([]string, 0)
+	hasCounters := false
+
 	for _, metric := range metrics {
 		names = append(names, metric.Name)
+		if metric.Type == domain.TypeCounter {
+			hasCounters = true
+		}
+	}
+	if hasCounters {
+		// Enforce atomicity for counter updates
+		s.updateMutex.Lock()
+		defer s.updateMutex.Unlock()
 	}
 
 	existingMetrics, err := s.repo.List(ctx, &domain.MetricsFilter{Names: names})
